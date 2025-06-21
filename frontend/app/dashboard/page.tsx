@@ -9,6 +9,7 @@ import PriceTicker from "@/components/PriceTicker"
 import PriceChart from "@/components/PriceChart"
 import MarketOverview from "@/components/MarketOverview"
 import { Sparkles, TrendingUp, DollarSign, Activity, BarChart3 } from "lucide-react"
+import { useUser } from "@civic/auth/react"
 
 // Enhanced mock data
 const vaults = [
@@ -93,6 +94,7 @@ export default function Dashboard() {
   const [systemResponse, setSystemResponse] = useState("Staked into Pell Vault @ 6.1%")
   const [mounted, setMounted] = useState(false)
   const [selectedChart, setSelectedChart] = useState<"BTC" | "ETH">("BTC")
+  const { user } = useUser();
 
   useEffect(() => {
     setMounted(true)
@@ -117,7 +119,9 @@ export default function Dashboard() {
       <div className="pt-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold gradient-text mb-2">Welcome back, John</h1>
+          <h1 className="text-4xl font-bold gradient-text mb-2">
+            Welcome back, {user ? user.name || 'Satsfi User' : '...'}
+          </h1>
           <p className="text-gray-400">Here's your portfolio overview and real-time market data</p>
         </div>
 
