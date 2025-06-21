@@ -1,51 +1,60 @@
-# Satsfi MVP: Project Status & To-Do List
+# ✅ SatsFi MVP To-Do Plan
 
-## Project Summary
-
-*   **Overall Completion:** ~85%
-*   **Backend:** 90% (Core API, intent parsing, user management, and database integration are complete. Ready for deeper contract logic.)
-*   **Smart Contracts:** 75% (Contracts are written and deployed, but backend interaction is mocked.)
-*   **Frontend:** 90% (UI is built, authentication is stable, and pages display live data from the backend.)
+> This to-do list tracks the remaining integration and deployment work for the SatsFi MVP.
 
 ---
 
-## Phase 1-6: MVP Core (✅ Complete)
+### 📂 Phase 6: Smart Contract Deployment & Integration
 
-*   [✅] **Phase 1: Backend Setup & Core Services**
-*   [✅] **Phase 2: Smart Contract Authoring**
-*   [✅] **Phase 3: Frontend Foundation & Authentication** (Civic social login implemented.)
-*   [✅] **Phase 4: Backend Integration** (Database models and endpoints for transactions and users are live.)
-*   [✅] **Phase 5: Frontend Web3 & Data Integration**
-    *   [✅] `wagmi` integrated for wallet connectivity.
-    *   [✅] History page fetches and displays user-specific transactions.
-    *   [✅] Price ticker displays live data from a backend proxy.
-    *   [✅] User's email and wallet address are automatically linked and stored in the database.
-*   [✅] **Phase 6: Deployment**
-    *   [✅] Both frontend and backend applications have been successfully deployed (e.g., to Render).
-    *   [✅] Resolved production-specific issues (CORS, API rate limiting).
+- [x] Write & verify smart contract deployment script (`deploy.ts`)
+- [x] Deploy `LendingPool`, `StakingVault`, and `stCORE` to a public testnet
+- [x] Replace mock addresses in `frontend/lib/config.ts` with deployed contract addresses
+- [x] Connect backend services to deployed contract addresses via `ethers.js`
+- [x] Use `.env` to securely manage RPC URLs and contract addresses
 
 ---
 
-## Phase 7: Finalization & Future Work (Current Phase)
+### 📊 Phase 7: Dashboard & Portfolio Live Data
 
-This phase focuses on replacing mock logic with real contract interactions and refining the application.
+- [x] Replace mock portfolio metrics with real data from smart contracts
+  - [x] Fetch `stCORE` balance from `StakingVault`
+  - [x] Fetch `CORE` borrowed from `LendingPool`
+  - [x] Fetch health factor from the `LendingPool` contract
+- [x] Update or create a `usePortfolio()` hook to pull live smart contract data
+- [x] Display the user's health factor and `stCORE` collateral on the Dashboard
 
-### High-Priority / Next Up:
-1.  **Connect Backend to Live Contracts:**
-    *   [ ] Install and configure `ethers.js` in the backend.
-    *   [ ] Replace mock success messages in `stakingController.js` and `lendingController.js` with real Web3 calls to the deployed smart contracts.
-    *   [ ] This involves creating, signing, and sending transactions on behalf of the user or preparing transactions for the user to sign on the frontend.
-2.  **Make Dashboard Fully Live:**
-    *   [ ] Create backend endpoints to fetch real user portfolio data from the smart contracts (e.g., total staked value, current debt, rewards).
-    *   [ ] Connect the dashboard metrics (`PositionCard`, `MarketOverview`, etc.) to these new endpoints.
-3.  **Implement Frontend Transaction Signing:**
-    *   [ ] When a user's intent requires an on-chain action, the frontend should receive the transaction data from the backend.
-    *   [ ] A modal should appear prompting the user to confirm and sign the transaction using their connected `wagmi` wallet.
-4.  **Full-Stack Testing:**
-    *   [ ] Conduct end-to-end testing of the primary user flow: Sign-in -> Connect Wallet -> Enter Intent -> Sign Transaction -> View Updated Dashboard & History.
+---
 
-### Low-Priority / Future Ideas:
-*   [ ] **Refine AI Recommendations:** Improve the "AI Recommendations" feed on the dashboard with more dynamic and intelligent suggestions.
-*   [ ] **Expand Protocol Support:** Integrate with other DeFi protocols to offer more complex and rewarding strategies.
-*   [ ] **UI/UX Polish:** Conduct a final review of the user interface for consistency and ease of use.
-*   [ ] **Add User Settings:** Make the `/settings` page functional, allowing users to manage their profile or notification preferences.
+### 🔐 Phase 8: Wallet Transaction Signing
+
+- [ ] Connect frontend `IntentInput` to backend endpoints like `POST /borrow-core` and `POST /repay-core`
+- [ ] Integrate MetaMask/`wagmi` signing flow for transactions initiated from the frontend
+- [ ] Implement a gas estimation and transaction feedback modal
+- [ ] Ensure the backend can handle native `tCORE` (`msg.value`) for borrowing/repaying from the `LendingPool`
+
+---
+
+### 🧪 Phase 9: Testing & QA
+
+- [ ] Write unit tests for `LendingPool.sol` (at least 5 critical test cases, e.g., borrow, repay, liquidate)
+- [ ] Test the full user flow: stake → mint `stCORE` → borrow → repay → see dashboard update
+- [ ] Test intent parsing for "Borrow 0.2 CORE" and "Repay CORE" flows
+- [ ] Add robust error handling for failed or rejected transactions
+
+---
+
+### 🌐 Phase 10: Production Deployment (Final)
+
+- [ ] Deploy contracts to the Core Mainnet after full testnet validation
+- [ ] Move production configuration to `.env.production` files
+- [ ] Verify contracts on a block explorer like CoreScan
+- [ ] Host the frontend on a service like Vercel or Render
+
+---
+
+### 🔁 Ongoing Maintenance & Optimization
+
+- [ ] Implement auto-refresh for dashboard metrics
+- [ ] Optimize loading states across the application
+- [ ] (Optional) Add full liquidation logic for when a user's health factor drops below a certain threshold (e.g., 1.25)
+- [ ] Document the smart contract architecture for open-source contributors

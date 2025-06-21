@@ -3,12 +3,29 @@
 import { CivicAuthProvider } from '@civic/auth/nextjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { coreDao } from 'wagmi/chains';
+import type { Chain } from 'wagmi/chains';
+
+export const coreDaoTestnet = {
+  id: 1114,
+  name: 'Core Blockchain TestNet',
+  nativeCurrency: {
+    name: 'Test Core',
+    symbol: 'tCORE',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.test2.btcs.network'] },
+  },
+  blockExplorers: {
+    default: { name: 'CoreScan', url: 'https://scan.test2.btcs.network' },
+  },
+} as const satisfies Chain;
+
 
 const wagmiConfig = createConfig({
-  chains: [coreDao],
+  chains: [coreDaoTestnet],
   transports: {
-    [coreDao.id]: http(),
+    [coreDaoTestnet.id]: http(),
   },
 });
 

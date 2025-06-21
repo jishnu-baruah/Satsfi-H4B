@@ -2,20 +2,19 @@
 
 ## 🚀 Project Overview
 
-**Satsfi** is an intent-centric Bitcoin-powered DeFi neobank that helps users stake BTC, earn optimized yield, and borrow stablecoins seamlessly. It uses AI to parse user requests and interacts with DeFi protocols on the Core blockchain.
+**Satsfi** is an intent-centric DeFi neobank. It uses AI to parse user requests and interacts with smart contracts on the Core blockchain to manage staking and lending.
 
 *   **Frontend:** Next.js, `wagmi` for wallet connection, and `@civic/auth` for social login.
 *   **Backend:** Express.js, Mongoose (MongoDB), and Google's Gemini API for intent parsing.
-*   **Smart Contracts:** Solidity contracts for lending and staking (currently mocked in the backend).
+*   **Smart Contracts:** Solidity contracts for lending (`LendingPool`) and staking (`StakingVault`).
 
 ---
 
 ## ✅ Prerequisites
 
-Make sure you have the following installed:
-*   **Node.js** (v18+ recommended)
-*   **Yarn** or **pnpm** or **npm**
-*   **Git**
+*   Node.js (v18+ recommended)
+*   npm, pnpm, or yarn
+*   Git
 
 ---
 
@@ -33,51 +32,53 @@ npm install
 # 3. Install frontend dependencies
 cd ../frontend
 npm install
+
+# 4. Install contract dependencies
+cd ../contracts
+npm install
 ```
 
 ---
 
 ## 🛠️ Environment Setup
 
-Create a `.env` file in the `backend/` directory and a `.env.local` file in the `frontend/` directory.
+Create a `.env` file in the `backend/` directory and a `.env.local` file in the `frontend/` directory. You will also need one in `contracts/` for deployment.
 
 ### Backend (`backend/.env`)
-The backend requires a MongoDB connection string and a Gemini API key for intent parsing.
-
 ```env
 # The port the backend server will run on
 PORT=5001
-
 # Your MongoDB connection string
 MONGODB_URI=mongodb+srv://<user>:<password>@<your-cluster-url>/satsfi?retryWrites=true&w=majority
-
 # Your API key from Google AI Studio for the Gemini API
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ### Frontend (`frontend/.env.local`)
-The frontend requires the URL of the backend API and the Civic Client ID for authentication.
-
 ```env
 # The full URL of your running backend server
-NEXT_PUBLIC_API_URL=http://localhost:5001
-
-# The Client ID for your Civic application.
-# Get this from the Civic developer dashboard.
+NEXT_PUBLIC_API_URL=http://localhost:5000
+# The Client ID for your Civic application from the Civic developer dashboard
 NEXT_PUBLIC_CIVIC_CLIENT_ID=your-civic-client-id
+```
+
+### Smart Contracts (`contracts/.env`)
+Used for deploying contracts to a live network.
+```env
+# The RPC URL for the network (e.g., Core Testnet)
+TESTNET_RPC_URL=https://rpc.test2.btcs.network
+# The private key of the wallet you are deploying from
+PRIVATE_KEY=your-wallet-private-key
 ```
 
 ---
 
 ## 🏃 Running the Project Locally
 
-You must have both the backend and frontend servers running.
-
 ```bash
 # Terminal 1: Start the backend server
 cd backend
 npm run dev
-# Server will run on http://localhost:5001
 
 # Terminal 2: Start the frontend server
 cd frontend
@@ -92,19 +93,19 @@ npm run dev
 ```
 satsfi/
 ├── backend/              # Express.js API
-│   ├── controllers/      # Handles business logic (staking, borrowing, users)
+│   ├── controllers/      # Business logic (staking, lending, users)
 │   ├── models/           # Mongoose schemas (Transaction, User)
-│   ├── routes/           # Defines API endpoints
 │   └── services/         # Connects to external services (Gemini API)
 │
 ├── frontend/             # Next.js App
 │   ├── app/              # App Router directory structure
-│   ├── components/       # Reusable UI components (Navbar, IntentInput, etc.)
-│   ├── hooks/            # Custom React hooks
-│   └── services/         # Connects to external services (CoinGecko via backend proxy)
+│   ├── components/       # Reusable UI components
+│   ├── hooks/            # Custom React hooks (e.g., usePortfolio)
+│   └── services/         # Frontend services (e.g., priceService)
 │
 └── contracts/            # Solidity Smart Contracts
-    ├── contracts/        # Source code for the .sol files
+    ├── contracts/        # Source code for .sol files
+    ├── scripts/          # Deployment scripts (e.g., deploy.ts)
     └── hardhat.config.ts # Hardhat configuration
 ```
 

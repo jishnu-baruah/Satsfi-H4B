@@ -1,46 +1,120 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Loader2, Send, Sparkles } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast as sonnerToast } from "sonner"
 import { Button } from "./ui/button"
-import { Textarea } from "./ui/textarea"
 import { useUser } from "@civic/auth/react"
-import { API_URL } from "@/lib/config"
-import { ToastAction } from "./ui/toast"
-import { useAccount } from "wagmi"
+import {
+  API_URL,
+  StakingVaultABI,
+  LendingPoolABI,
+  STAKING_VAULT_ADDRESS,
+  LENDING_POOL_ADDRESS,
+} from "@/lib/config"
+import {
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi"
 
 interface IntentInputProps {
   placeholder?: string
   className?: string
   onSignIn?: () => void
+  onNewResponse?: (intent: string, response: string) => void
 }
 
 export default function IntentInput({
   placeholder = "e.g., Max yield on 0.5 BTC",
   className = "",
   onSignIn,
+  onNewResponse,
 }: IntentInputProps) {
   const [intent, setIntent] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
   const { user, signIn: civicSignIn } = useUser()
   const { address } = useAccount()
+  const {
+    data: hash,
+    writeContract,
+    isPending: isWritePending,
+    error: writeError,
+  } = useWriteContract()
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    error: receiptError,
+  } = useWaitForTransactionReceipt({ hash })
+
+  const [transactionId, setTransactionId] = useState<string | null>(null)
 
   const effectiveSignIn = onSignIn || civicSignIn
 
+  // Effect to confirm transaction with backend
+  useEffect(() => {
+    if (hash && transactionId) {
+      const confirmTx = async () => {
+        try {
+          await fetch(`${API_URL}/transaction/confirm`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transactionId, transactionHash: hash }),
+          })
+        } catch (error) {
+          console.error("Failed to confirm transaction with backend", error)
+        }
+      }
+      confirmTx()
+      setTransactionId(null) // Reset after confirming
+    }
+  }, [hash, transactionId])
+
+  // Effect to show toast notifications based on transaction status
+  useEffect(() => {
+    if (isConfirming) {
+      sonnerToast.loading("Transaction is processing...", {
+        description: "Waiting for blockchain confirmation.",
+        id: "tx-status",
+      })
+    }
+    if (isConfirmed) {
+      const successMsg = "Your transaction has been successfully recorded on the blockchain."
+      onNewResponse?.(intent, successMsg)
+      sonnerToast.success("Transaction Confirmed!", {
+        description: successMsg,
+        id: "tx-status",
+      })
+    }
+    if (writeError || receiptError) {
+      const errorMsg = (writeError || receiptError)?.message || "An unknown error occurred."
+      onNewResponse?.(intent, errorMsg)
+      sonnerToast.error("Transaction Failed", {
+        description: errorMsg,
+        id: "tx-status",
+      })
+    }
+  }, [isConfirming, isConfirmed, writeError, receiptError, intent, onNewResponse])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!intent.trim() || isLoading) return
+
+    const loadingCondition = isLoading || isWritePending || isConfirming
+    if (!intent.trim() || loadingCondition) {
+      return
+    }
 
     if (!user) {
       setIsLoading(true)
       setTimeout(() => {
-        toast({
-          title: "🤖 SatsFi AI",
-          description: "That's a great question! Sign in to get a personalized answer and start using SatsFi.",
-          action: <ToastAction altText="Sign In" onClick={() => effectiveSignIn()}>Sign In</ToastAction>,
+        sonnerToast.info("Sign in to continue", {
+          description:
+            "That's a great question! Please sign in to get a personalized answer.",
+          action: {
+            label: "Sign In",
+            onClick: () => effectiveSignIn(),
+          },
         })
         setIsLoading(false)
       }, 500)
@@ -48,47 +122,71 @@ export default function IntentInput({
     }
 
     setIsLoading(true)
-    
+
     try {
-      const userAddress = address
-      if (!userAddress) {
-        throw new Error("Could not find user wallet address. Please connect your wallet.")
+      if (!address) {
+        throw new Error(
+          "Could not find user wallet address. Please connect your wallet."
+        )
       }
 
       const response = await fetch(`${API_URL}/intent/process`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           intent: intent,
-          userAddress: userAddress,
+          userAddress: address,
+          contractAddresses: {
+            stakingVault: STAKING_VAULT_ADDRESS,
+            lendingPool: LENDING_POOL_ADDRESS,
+          },
         }),
       })
 
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.message || 'An unexpected error occurred.')
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "An unexpected error occurred.")
       }
 
-      toast({
-        title: "Intent Sent!",
-        description: data.message || "Your transaction is being processed.",
-        variant: "success",
+      onNewResponse?.(intent, data.message)
+
+      sonnerToast.info("Action Required", {
+        description: data.message,
       })
-      
+
+      if (data.transaction) {
+        setTransactionId(data.transactionId)
+        const { to, functionName, args, value } = data.transaction
+
+        // Determine which ABI to use
+        const abi =
+          functionName === "deposit" || functionName === "withdraw" ? StakingVaultABI : LendingPoolABI
+
+        const writeArgs = {
+          address: to,
+          abi,
+          functionName,
+          args,
+          value: value ? BigInt(value) : undefined,
+        }
+
+        writeContract(writeArgs)
+      }
       setIntent("")
     } catch (err: any) {
-      toast({
-        title: "Error",
+      onNewResponse?.(intent, err.message || "Failed to process intent.")
+      sonnerToast.error("Error", {
         description: err.message || "Failed to process intent.",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
     }
   }
+
+  const isLoadingOverall = isLoading || isWritePending || isConfirming
 
   return (
     <form onSubmit={handleSubmit} className={`relative ${className}`}>
@@ -104,15 +202,19 @@ export default function IntentInput({
                 onChange={(e) => setIntent(e.target.value)}
                 placeholder={placeholder}
                 className="w-full bg-transparent border-none pl-14 pr-4 py-5 text-lg placeholder-gray-500 focus:outline-none text-white font-mono group-hover:placeholder-gray-400 transition-colors duration-300"
-                disabled={isLoading}
+                disabled={isLoadingOverall}
               />
             </div>
             <button
               type="submit"
-              disabled={!intent.trim() || isLoading}
+              disabled={!intent.trim() || isLoadingOverall}
               className="btn-primary mr-2 p-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              {isLoadingOverall ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>

@@ -1,91 +1,63 @@
-# Smart Contract Requirements for Satsfi
+# Smart Contract Requirements for Satsfi (CORE-based Lending)
 
 ## 1. Introduction
 
-This document outlines the functional and technical requirements for the Satsfi smart contract suite. The contracts will be designed to power the platform's core DeFi functionalities: staking, yield optimization, and collateralized borrowing.
+This document outlines the requirements for a simplified Satsfi smart contract suite operating on the **Core Blockchain TestNet (TCORE2)**. The contracts will power a streamlined DeFi flow: staking native `CORE` to mint `stCORE`, and using `stCORE` as collateral to borrow native `CORE`.
 
-**Target Network:** Core Blockchain TestNet
+**Target Network:** Core Blockchain TestNet (TCORE2)
 
-## 2. Core Principles
+## 2. Core Contracts
 
-*   **Security:** Adherence to security best practices (e.g., Checks-Effects-Interactions pattern, Reentrancy Guards, proper access control) is the highest priority.
-*   **Modularity:** Contracts will be designed in a modular way to allow for straightforward upgrades, maintenance, and future expansion.
-*   **Gas Efficiency:** Code will be optimized for gas efficiency to ensure low transaction costs for users on the Core network.
-*   **Clarity:** The codebase must be well-documented and clearly written to facilitate audits and community contributions.
+The system will consist of three primary contracts:
+1.  **`stCORE.sol`**: An ERC20 token representing a user's staked `CORE`.
+2.  **`StakingVault.sol`**: A contract that accepts native `CORE` deposits and mints `stCORE` in return.
+3.  **`LendingPool.sol`**: A contract where users can deposit `stCORE` as collateral to borrow native `CORE`.
 
 ---
 
-## 3. Required Features (Must-Haves for MVP)
+## 3. Required Features
 
-These features are essential for the initial launch and core functionality of the Satsfi platform.
+### 3.1. Staking and Tokenization
 
-### 3.1. Tokenization
+*   **`stCORE` Token:**
+    *   **Requirement:** An ERC20-compliant token representing a user's staked `CORE`.
+    *   **Functionality:** It must be minted 1:1 by the `StakingVault` when a user deposits `CORE` and burned when they withdraw.
+*   **`StakingVault` Contract:**
+    *   **Requirement:** Users must be able to deposit native `CORE` into the vault.
+    *   **Functionality:** The contract will lock the deposited `CORE` and mint an equivalent amount of `stCORE` to the user's wallet. It must also allow users to burn `stCORE` to withdraw their underlying `CORE`.
 
-*   **stCORE Token:**
-    *   **Requirement:** An ERC20-compliant token representing a user's staked `tCORE`.
-    *   **Functionality:** It must be minted 1:1 by the Staking Contract when a user deposits `tCORE` and burned when they withdraw. This token represents their share of the staking pool.
-*   **SUSD Stablecoin:**
-    *   **Requirement:** An ERC20-compliant stablecoin, pegged to the US Dollar.
-    *   **Functionality:** The Lending Contract will have the exclusive authority to mint `SUSD` when a user borrows against their collateral and burn `SUSD` when a user repays their loan.
+### 3.2. Collateralized Lending (stCORE → Native CORE)
 
-### 3.2. Staking & Yield Vault
+The `LendingPool.sol` contract will manage all lending operations.
 
-*   **Staking (`tCORE` Deposit):**
-    *   **Requirement:** Users must be able to deposit `tCORE` into a central staking contract.
-    *   **Functionality:** The contract will lock the `tCORE` and mint an equivalent amount of `stCORE` to the user's wallet.
-*   **Unstaking (`tCORE` Withdrawal):**
-    *   **Requirement:** Users must be able to withdraw their `tCORE` at any time, provided it is not locked as collateral.
-    *   **Functionality:** The user burns their `stCORE`, and the contract transfers the corresponding amount of `tCORE` back to them.
-*   **Yield Distribution:**
-    *   **Requirement:** The contract must be ableto accrue yield generated from underlying strategies.
-    *   **Functionality:** A simple, admin-callable `distributeYield()` function that allocates accrued rewards to `stCORE` holders.
-
-### 3.3. Collateralized Lending & Borrowing
-
-*   **Collateral Management:**
-    *   **Requirement:** Users must be able to lock their `stCORE` tokens as collateral in the Lending Contract.
+*   **Collateral Deposit:**
+    *   **Requirement:** Users must be able to deposit their `stCORE` tokens as collateral.
+    *   **Functionality:** Implement a `depositCollateral(uint256 amount)` function that transfers `stCORE` from the user to the `LendingPool`. A `stCORECollateral` mapping will track each user's balance.
 *   **Price Oracle Integration (Chainlink):**
-    *   **Requirement:** The contract must integrate with Chainlink Price Feeds to get a reliable, real-time price for `tCORE` in USD.
-    *   **Functionality:** This price feed is critical for calculating the value of a user's collateral and determining their borrowing capacity and loan health.
-*   **Borrowing `SUSD`:**
-    *   **Requirement:** Users must be able to borrow `SUSD` against their locked collateral.
-    *   **Functionality:** The amount of `SUSD` a user can borrow is determined by their collateral's value and the system's Collateralization Ratio.
-*   **Collateralization Ratio (CR):**
-    *   **Requirement:** The contract must enforce a minimum CR (e.g., 150%) to ensure all loans are over-collateralized.
-    *   **Functionality:** A user cannot perform any action (e.g., borrow more, withdraw collateral) that would cause their CR to drop below the minimum threshold.
+    *   **Requirement:** The contract must integrate with Chainlink Price Feeds to get a reliable, real-time price for `CORE` in USD.
+    *   **Functionality:** This price feed is critical for calculating collateral value and loan health.
+*   **Borrowing Native `CORE`:**
+    *   **Requirement:** Users must be able to borrow native `CORE` against their locked `stCORE` collateral.
+    *   **Functionality:** Implement a `borrowCORE(uint256 amount)` function that checks the user's health factor and, if safe, transfers the requested amount of native `CORE` from the contract to the user. A `borrowedCORE` mapping will track each user's debt.
 *   **Loan Repayment:**
-    *   **Requirement:** Users must be able to repay their `SUSD` debt, plus any accrued interest.
-*   **Liquidation Mechanism:**
-    *   **Requirement:** The contract must include a public function to liquidate under-collateralized loans.
-    *   **Functionality:** When a user's CR falls below a specified liquidation threshold (e.g., 125%), third-party liquidators can repay a portion of the user's `SUSD` debt in exchange for an equivalent amount of their `stCORE` collateral at a discount.
+    *   **Requirement:** Users must be able to repay their `CORE` debt.
+    *   **Functionality:** Implement a `payable repayCORE()` function. The user sends `CORE` along with the transaction (`msg.value`) to repay their outstanding debt.
+*   **Health Factor:**
+    *   **Requirement:** The contract must be able to calculate a user's loan health to prevent insolvency.
+    *   **Functionality:** Implement a `getHealthFactor(address user) public view` function that returns the user's health factor based on their collateral value and borrowed amount. A health factor below a certain threshold (e.g., 1.0) would make a user eligible for liquidation.
 
-### 3.4. Identity Verification (Civic Integration)
+### 3.3. Administrative Controls
 
-*   **On-Chain Pass Verification:**
-    *   **Requirement:** The borrowing functionality must be protected by Civic Pass.
-    *   **Functionality:** Before executing a borrow request, the Lending Contract **must** invoke the `IGatewayTokenVerifier` contract to validate that the user's address holds an active Civic Pass for the designated Gatekeeper Network. The transaction must revert if the verification fails.
-
-### 3.5. Administrative Controls
-
-*   **Access Control:** All contracts must implement robust access control (e.g., `Ownable`) for sensitive functions.
-*   **System Parameters:** The contract owner must have the ability to manage and update critical system parameters, including:
-    *   Minimum Collateralization Ratio
-    *   Liquidation Threshold and Discount
-    *   Borrowing Interest Rate
-    *   Addresses for the Chainlink Price Feed and Civic Verifier contract
-    *   The Civic Gatekeeper Network ID
+*   **Access Control:** All sensitive functions must be protected (e.g., using `Ownable`).
+*   **System Parameters:** The contract owner must have the ability to manage critical system parameters in the `LendingPool`, including:
+    *   Minimum Collateralization Ratio / Health Factor Threshold
+    *   Loan-to-Value (LTV) ratio
+    *   Address for the Chainlink Price Feed
 
 ---
 
 ## 4. Optional Features (Future Enhancements)
 
-These features are not required for the initial launch but can be implemented in future versions to improve the platform.
-
-*   **Automated Yield Strategies:**
-    *   **Concept:** Implement a Vault architecture where the staked `tCORE` can be automatically deployed to external, audited DeFi protocols to generate yield, instead of relying on manual distribution.
-*   **Decentralized Governance:**
-    *   **Concept:** Introduce a `SATSFI` governance token that allows token holders to vote on protocol upgrades and parameter changes, reducing reliance on a single admin.
-*   **Dynamic Interest Rates:**
-    *   **Concept:** Implement a dynamic interest rate model for borrowing that adjusts automatically based on the utilization of the `SUSD` liquidity pool.
-*   **Multi-Collateral Support:**
-    *   **Concept:** Allow users to borrow `SUSD` against other assets in addition to `stCORE`, such as `wBTC` or `ETH`. 
+*   **Liquidation Mechanism:** Implement a public function to allow third parties to liquidate under-collateralized loans, repaying `CORE` debt in exchange for `stCORE` collateral at a discount.
+*   **Decentralized Governance:** Introduce a governance token to manage protocol parameters.
+*   **Dynamic Interest Rates:** Implement an interest rate model for borrowing that adjusts based on protocol utilization. 

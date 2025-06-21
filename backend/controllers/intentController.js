@@ -42,6 +42,12 @@ const processIntent = async (req, res) => {
             case 'borrow':
                 result = await lendingController.borrow(transaction);
                 break;
+            case 'repay':
+                result = await lendingController.repay(transaction);
+                break;
+            case 'withdraw':
+                result = await stakingController.withdraw(transaction);
+                break;
             default:
                 transaction.status = 'failed';
                 transaction.response_message = `Action '${parsedIntent.action}' is not supported yet.`;
@@ -49,7 +55,16 @@ const processIntent = async (req, res) => {
                 result = { success: false, message: transaction.response_message };
         }
 
-        res.status(200).json(result);
+        // IMPORTANT: The result from controllers should contain { success, message, transaction (the unsigned tx object) }
+        // We add the transaction ID here before sending to the frontend.
+        if (result && result.success && result.transaction) {
+             res.status(200).json({
+                ...result,
+                transactionId: transaction._id 
+             });
+        } else {
+            res.status(result.success ? 200 : 400).json(result);
+        }
 
     } catch (error) {
         console.error("Error processing intent:", error);

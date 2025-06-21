@@ -1,31 +1,109 @@
 const Transaction = require('../models/Transaction');
+const { ethers } = require('ethers');
+
+const LENDING_POOL_ADDRESS = "0xFcE44C16e18F98d58dDC85b8c803B9CaBFeBf542";
 
 const borrow = async (transaction) => {
-    console.log("Lending controller called with transaction:", transaction);
+    try {
+        const amount = transaction.parsed_intent.amount;
+        const asset = transaction.parsed_intent.asset?.toUpperCase();
 
-    // Validate that collateral has been provided
-    if (!transaction.parsed_intent.collateral) {
-        const errorMessage = "Could not process borrow request. Please specify which asset to use as collateral (e.g., 'borrow 5000 USDC against my BTC').";
+        // --- Input Validation ---
+        if (
+            !amount ||
+            typeof amount !== "number" ||
+            !asset
+        ) {
+            throw new Error(
+                "Could not parse the amount or asset from your intent. Please be more specific (e.g., 'borrow 0.1 CORE')."
+            );
+        }
+        // --- End Validation ---
+
+        console.log("Preparing borrow transaction:", transaction);
+
+        const amountInWei = ethers.parseEther(amount.toString());
+
+        const txData = {
+            to: LENDING_POOL_ADDRESS,
+            functionName: "borrow",
+            args: [amountInWei.toString()],
+        };
+
+        const responseMessage = `Ready to borrow ${amount} ${asset}. Please confirm the transaction in your wallet.`;
+
+        transaction.status = 'pending';
+        transaction.response_message = responseMessage;
+        await transaction.save();
+
+        return {
+            success: true,
+            message: responseMessage,
+            transaction: txData,
+            transactionId: transaction._id,
+        };
+    } catch (error) {
+        console.error("Failed to prepare borrow transaction:", error);
+        const errorMessage = `Failed to prepare borrow transaction: ${error.message}`;
+
         transaction.status = 'failed';
         transaction.response_message = errorMessage;
         await transaction.save();
+
         return { success: false, message: errorMessage };
     }
+};
 
-    // 1. Create a mock success message
-    const amount = transaction.parsed_intent.amount;
-    const asset = transaction.parsed_intent.asset.toUpperCase();
-    const collateral_asset = transaction.parsed_intent.collateral.toUpperCase();
+const repay = async (transaction) => {
+    try {
+        const amount = transaction.parsed_intent.amount;
+        const asset = transaction.parsed_intent.asset?.toUpperCase();
 
-    const responseMessage = `Successfully borrowed ${amount} ${asset} against your ${collateral_asset} collateral. Your loan is healthy with a collateralization ratio of 150%.`;
+        // --- Input Validation ---
+        if (
+            !amount ||
+            typeof amount !== "number" ||
+            !asset
+        ) {
+            throw new Error(
+                "Could not parse the amount or asset from your intent. Please be more specific (e.g., 'repay 0.1 CORE')."
+            );
+        }
+        // --- End Validation ---
 
-    // 2. Update the transaction in the database
-    transaction.status = 'success';
-    transaction.response_message = responseMessage;
-    await transaction.save();
+        console.log("Preparing repay transaction:", transaction);
 
-    // 3. Return the success message
-    return { success: true, message: responseMessage };
+        const amountInWei = ethers.parseEther(amount.toString());
+
+        const txData = {
+            to: LENDING_POOL_ADDRESS,
+            functionName: "repay",
+            args: [],
+            value: amountInWei.toString(),
+        };
+
+        const responseMessage = `Ready to repay ${amount} ${asset}. Please confirm the transaction in your wallet.`;
+
+        transaction.status = 'pending';
+        transaction.response_message = responseMessage;
+        await transaction.save();
+
+        return {
+            success: true,
+            message: responseMessage,
+            transaction: txData,
+            transactionId: transaction._id,
+        };
+    } catch (error) {
+        console.error("Failed to prepare repay transaction:", error);
+        const errorMessage = `Failed to prepare repay transaction: ${error.message}`;
+
+        transaction.status = 'failed';
+        transaction.response_message = errorMessage;
+        await transaction.save();
+
+        return { success: false, message: errorMessage };
+    }
 };
 
 const getTransactions = async (req, res) => {
@@ -54,6 +132,7 @@ const getUserTransactions = async (req, res) => {
 
 module.exports = {
     borrow,
+    repay,
     getTransactions,
     getUserTransactions,
 }; 

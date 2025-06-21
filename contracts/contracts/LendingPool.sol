@@ -2,190 +2,118 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IChainlinkAggregator.sol";
-import "./interfaces/ICivicVerifier.sol";
-import "./SUSD.sol";
-import "./stCORE.sol";
 
 /**
  * @title LendingPool
- * @dev Manages borrowing SUSD against stCORE collateral.
+ * @dev Manages stCORE collateral and allows borrowing of native CORE.
  */
 contract LendingPool is Ownable {
-    using SafeERC20 for IERC20;
-
     // --- State Variables ---
 
-    // Our own contracts
-    SatsfiUSD public susdToken;
-    IERC20 public stCoreToken;
+    IERC20 public immutable stCORE;
+    IChainlinkAggregator public immutable priceFeed;
 
-    // External integrations
-    IChainlinkAggregator public priceFeed;
-    ICivicVerifier public civicVerifier;
+    mapping(address => uint256) public stCORECollateral;
+    mapping(address => uint256) public borrowedCORE;
 
-    // System parameters
-    uint256 public constant COLLATERAL_RATIO_PRECISION = 100;
-    uint256 public minCollateralizationRatio = 150; // In percentage (e.g., 150%)
-    uint256 public liquidationThreshold = 125;      // In percentage (e.g., 125%)
-    bytes32 public civicGatekeeperNetwork;
-
-    // User data
-    mapping(address => uint256) public collateral; // user => amount of stCORE
-    mapping(address => uint256) public debt;       // user => amount of SUSD borrowed
+    uint256 public loanToValueRatio = 70; // 70% LTV
 
     // --- Events ---
 
     event CollateralDeposited(address indexed user, uint256 amount);
     event CollateralWithdrawn(address indexed user, uint256 amount);
-    event LoanTaken(address indexed user, uint256 amount);
-    event LoanRepaid(address indexed user, uint256 amount);
-    event LoanLiquidated(address indexed liquidator, address indexed user, uint256 debtPaid, uint256 collateralSeized);
+    event CoreBorrowed(address indexed user, uint256 amount);
+    event CoreRepaid(address indexed user, uint256 amount);
+
+    // --- Errors ---
+
+    error LendingPool__InsufficientCollateral();
+    error LendingPool__MustBeGreaterThanZero();
+    error LendingPool__TransferFailed();
+    error LendingPool__RepaymentAmountExceedsDebt();
 
     // --- Constructor ---
 
-    constructor(
-        address _susdTokenAddress,
-        address _stCoreTokenAddress,
-        address _priceFeedAddress,
-        address _civicVerifierAddress,
-        bytes32 _civicGatekeeperNetwork
-    ) Ownable(msg.sender) {
-        susdToken = SatsfiUSD(_susdTokenAddress);
-        stCoreToken = IERC20(_stCoreTokenAddress);
+    constructor(address _stCoreAddress, address _priceFeedAddress) Ownable(msg.sender) {
+        stCORE = IERC20(_stCoreAddress);
         priceFeed = IChainlinkAggregator(_priceFeedAddress);
-        civicVerifier = ICivicVerifier(_civicVerifierAddress);
-        civicGatekeeperNetwork = _civicGatekeeperNetwork;
     }
 
-    // --- Internal Helper Functions ---
-
-    /**
-     * @dev Gets the latest price from the Chainlink price feed.
-     * The price is returned with 8 decimals of precision.
-     */
-    function getAssetPrice() internal view returns (uint256) {
-        (, int256 price, , , ) = priceFeed.latestRoundData();
-        // Price feed has 8 decimals, so we return it as a uint
-        return uint256(price);
-    }
-
-    /**
-     * @dev Calculates the USD value of a user's stCORE collateral.
-     */
-    function getCollateralValueInUSD(address _user) public view returns (uint256) {
-        uint256 stCoreAmount = collateral[_user];
-        if (stCoreAmount == 0) return 0;
-
-        uint256 price = getAssetPrice();
-        // stCORE has 18 decimals, price feed has 8.
-        // (stCoreAmount * price) / 10**18 (for stCore decimals) / 10**8 (for price decimals)
-        // To avoid floating point, we multiply first, then divide.
-        // (stCoreAmount * price) / 10**(18 + 8) -> (stCoreAmount * price) / 1e26
-        // Let's simplify and assume stCORE price is 1:1 with CORE price from feed
-        return (stCoreAmount * price) / 1e8; // stCORE has 18 decimals, but we need USD value
-    }
-
-    /**
-     * @dev Calculates the health factor of a user's loan.
-     * A health factor below 100 means the position is undercollateralized.
-     */
-    function getHealthFactor(address _user) public view returns (uint256) {
-        uint256 collateralValue = getCollateralValueInUSD(_user);
-        uint256 userDebt = debt[_user];
-
-        if (userDebt == 0) return type(uint256).max;
-
-        // Health Factor = (Collateral Value * 100) / Debt Value
-        return (collateralValue * COLLATERAL_RATIO_PRECISION) / userDebt;
-    }
-
-    // --- Core Logic Functions ---
+    // --- External Functions ---
 
     /**
      * @dev Deposits stCORE as collateral.
+     * @param amount The amount of stCORE to deposit.
      */
-    function depositCollateral(uint256 _amount) external {
-        require(_amount > 0, "Amount must be greater than zero");
-        collateral[msg.sender] += _amount;
-        stCoreToken.safeTransferFrom(msg.sender, address(this), _amount);
-        emit CollateralDeposited(msg.sender, _amount);
+    function depositCollateral(uint256 amount) external {
+        if (amount == 0) revert LendingPool__MustBeGreaterThanZero();
+        stCORECollateral[msg.sender] += amount;
+        bool success = stCORE.transferFrom(msg.sender, address(this), amount);
+        if (!success) revert LendingPool__TransferFailed();
+        emit CollateralDeposited(msg.sender, amount);
+    }
+    
+    /**
+     * @dev Allows users to borrow native CORE against their stCORE collateral.
+     * @param amount The amount of CORE to borrow.
+     */
+    function borrowCORE(uint256 amount) external {
+        if (amount == 0) revert LendingPool__MustBeGreaterThanZero();
+        
+        uint256 healthFactor = getHealthFactor(msg.sender);
+        if(healthFactor < 1 ether) revert LendingPool__InsufficientCollateral();
+
+        borrowedCORE[msg.sender] += amount;
+        (bool success, ) = msg.sender.call{value: amount}("");
+        if (!success) revert LendingPool__TransferFailed();
+
+        emit CoreBorrowed(msg.sender, amount);
     }
 
     /**
-     * @dev Withdraws stCORE collateral.
+     * @dev Allows users to repay their borrowed CORE.
      */
-    function withdrawCollateral(uint256 _amount) external {
-        require(_amount > 0, "Amount must be greater than zero");
-        require(collateral[msg.sender] >= _amount, "Insufficient collateral");
+    function repayCORE() external payable {
+        if (msg.value == 0) revert LendingPool__MustBeGreaterThanZero();
+        if (msg.value > borrowedCORE[msg.sender]) revert LendingPool__RepaymentAmountExceedsDebt();
         
-        collateral[msg.sender] -= _amount;
-        
-        // Check if the user's position is still healthy after withdrawal
-        require(getHealthFactor(msg.sender) >= minCollateralizationRatio, "Position would be undercollateralized");
-
-        stCoreToken.safeTransfer(msg.sender, _amount);
-        emit CollateralWithdrawn(msg.sender, _amount);
+        borrowedCORE[msg.sender] -= msg.value;
+        emit CoreRepaid(msg.sender, msg.value);
     }
 
-    // --- Borrowing and Repayment ---
+    // --- Public & View Functions ---
 
     /**
-     * @dev Borrows SUSD against the user's collateral.
+     * @dev Calculates the health factor of a user's loan.
+     * @param user The address of the user.
+     * @return The health factor, where 1e18 (or 1 ether) is the liquidation threshold.
      */
-    function borrow(uint256 _amount) external {
-        require(_amount > 0, "Amount must be greater than zero");
-
-        // On-chain check for Civic Pass
-        require(civicVerifier.verifyToken(msg.sender, civicGatekeeperNetwork), "Civic Pass not found");
-
-        uint256 maxBorrowable = getCollateralValueInUSD(msg.sender) * COLLATERAL_RATIO_PRECISION / minCollateralizationRatio;
-        uint256 totalDebtAfter = debt[msg.sender] + _amount;
+    function getHealthFactor(address user) public view returns (uint256) {
+        (uint256 totalCollateralValueInUSD, uint256 totalDebtInUSD) = _getAccountInfo(user);
+        if (totalDebtInUSD == 0) return type(uint256).max;
         
-        require(totalDebtAfter <= maxBorrowable, "Borrow amount exceeds maximum allowed");
-
-        debt[msg.sender] = totalDebtAfter;
-        susdToken.mint(msg.sender, _amount);
-        emit LoanTaken(msg.sender, _amount);
+        uint256 healthFactor = (totalCollateralValueInUSD * 1 ether) / totalDebtInUSD;
+        return healthFactor;
     }
 
-    /**
-     * @dev Repays a SUSD loan.
-     */
-    function repay(uint256 _amount) external {
-        require(_amount > 0, "Amount must be greater than zero");
-        require(debt[msg.sender] >= _amount, "Amount exceeds debt");
+    // --- Internal Functions ---
 
-        debt[msg.sender] -= _amount;
-        // SUSD contract is our own, but for consistency we should use the burnable extension
-        // I will add that to SUSD.sol next
-        susdToken.burnFrom(msg.sender, _amount);
-        emit LoanRepaid(msg.sender, _amount);
-    }
+    function _getAccountInfo(address user) internal view returns (uint256 totalCollateralValueInUSD, uint256 totalDebtInUSD) {
+        // 1. Get stCORE collateral and borrowed CORE amounts
+        uint256 stCoreCollateralAmount = stCORECollateral[user];
+        uint256 coreBorrowedAmount = borrowedCORE[user];
 
-    // --- Liquidation ---
+        // 2. Get the price of CORE from Chainlink
+        (, int256 price, , , ) = priceFeed.latestRoundData();
+        // Price comes with 8 decimals, so we adjust to 18
+        uint256 corePriceInUSD = uint256(price) * 1e10; 
 
-    /**
-     * @dev Allows third parties to liquidate undercollateralized positions.
-     */
-    function liquidate(address _user) external {
-        require(getHealthFactor(_user) < liquidationThreshold, "Position is not eligible for liquidation");
-        
-        uint256 userDebt = debt[_user];
-        uint256 collateralValue = getCollateralValueInUSD(_user);
-        
-        // Liquidator repays the full debt
-        // User must approve this contract to spend their SUSD
-        susdToken.burnFrom(msg.sender, userDebt);
+        // 3. Calculate total values in USD
+        totalCollateralValueInUSD = (stCoreCollateralAmount * corePriceInUSD * loanToValueRatio) / 100 / 1e18;
+        totalDebtInUSD = (coreBorrowedAmount * corePriceInUSD) / 1e18;
 
-        // Calculate collateral to be seized (with a discount, implied by the health factor)
-        uint256 collateralToSeize = userDebt * 1e18 / getAssetPrice(); // Simplified calculation
-
-        collateral[_user] -= collateralToSeize;
-        debt[_user] = 0;
-
-        stCoreToken.safeTransfer(msg.sender, collateralToSeize);
-        emit LoanLiquidated(msg.sender, _user, userDebt, collateralToSeize);
+        return (totalCollateralValueInUSD, totalDebtInUSD);
     }
 } 

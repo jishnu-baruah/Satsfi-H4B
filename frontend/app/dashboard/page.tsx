@@ -8,8 +8,10 @@ import AlertCard from "@/components/AlertCard"
 import PriceTicker from "@/components/PriceTicker"
 import PriceChart from "@/components/PriceChart"
 import MarketOverview from "@/components/MarketOverview"
-import { Sparkles, TrendingUp, DollarSign, Activity, BarChart3 } from "lucide-react"
+import { Sparkles, TrendingUp, DollarSign, Activity, BarChart3, RefreshCw } from "lucide-react"
 import { useUser } from "@civic/auth/react"
+import { usePortfolio } from "@/hooks/usePortfolio"
+import { Skeleton } from "@/components/ui/skeleton"
 
 // Enhanced mock data
 const vaults = [
@@ -95,12 +97,37 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [selectedChart, setSelectedChart] = useState<"BTC" | "ETH">("BTC")
   const { user } = useUser();
+  const { portfolio, isLoading, error, refetch } = usePortfolio();
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  const handleNewResponse = (intent: string, response: string) => {
+    setLastIntent(intent);
+    setSystemResponse(response);
+  };
+
   if (!mounted) return null
+
+  const StatCard = ({ icon, title, value, subtext, color, loading }: { icon: React.ReactNode, title: string, value: string, subtext: string, color: string, loading: boolean }) => (
+    <div className="glass-card p-6 hover:scale-105 transition-all duration-300">
+      <div className={`flex items-center justify-between mb-4 text-${color}-400`}>
+        {icon}
+      </div>
+      {loading ? (
+        <>
+          <Skeleton className="w-3/4 h-8 mb-2" />
+          <Skeleton className="w-1/2 h-4" />
+        </>
+      ) : (
+        <>
+          <div className="text-2xl font-bold text-white font-mono mb-1">{value}</div>
+          <div className="text-sm text-gray-400">{subtext}</div>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -109,56 +136,49 @@ export default function Dashboard() {
       <div className="pt-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold gradient-text mb-2">
-            Welcome back, {user ? user.name || 'Satsfi User' : '...'}
-          </h1>
-          <p className="text-gray-400">Here's your portfolio overview and real-time market data</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold gradient-text mb-2">
+                Welcome back, {user ? user.name || 'Satsfi User' : '...'}
+              </h1>
+              <p className="text-gray-400">Here's your portfolio overview and real-time market data</p>
+            </div>
+            <button onClick={() => refetch()} className="glass-card-button flex items-center gap-2 p-2 hover:bg-gray-700/50 transition-colors">
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="text-sm">Refresh data</span>
+            </button>
+          </div>
         </div>
 
         {/* Live Price Ticker */}
         <PriceTicker />
 
         {/* Portfolio Overview */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <div className="glass-card p-6 hover:scale-105 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <DollarSign className="w-8 h-8 text-green-400" />
-              <TrendingUp className="w-5 h-5 text-green-400" />
-            </div>
-            <div className="text-2xl font-bold text-white font-mono mb-1">$47,500</div>
-            <div className="text-sm text-gray-400">Total Portfolio Value</div>
-            <div className="text-xs text-green-400 mt-1">+2.3% (24h)</div>
-          </div>
-
-          <div className="glass-card p-6 hover:scale-105 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <Activity className="w-8 h-8 text-orange-400" />
-              <div className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded-full">ACTIVE</div>
-            </div>
-            <div className="text-2xl font-bold text-white font-mono mb-1">6.1%</div>
-            <div className="text-sm text-gray-400">Average APY</div>
-            <div className="text-xs text-orange-400 mt-1">Optimized</div>
-          </div>
-
-          <div className="glass-card p-6 hover:scale-105 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <Sparkles className="w-8 h-8 text-purple-400" />
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            </div>
-            <div className="text-2xl font-bold text-white font-mono mb-1">$5.32</div>
-            <div className="text-sm text-gray-400">Daily Yield</div>
-            <div className="text-xs text-purple-400 mt-1">AI Optimized</div>
-          </div>
-
-          <div className="glass-card p-6 hover:scale-105 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp className="w-8 h-8 text-blue-400" />
-              <div className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">SAFE</div>
-            </div>
-            <div className="text-2xl font-bold text-white font-mono mb-1">65%</div>
-            <div className="text-sm text-gray-400">Loan-to-Value</div>
-            <div className="text-xs text-blue-400 mt-1">Healthy</div>
-          </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <StatCard
+            icon={<DollarSign className="w-8 h-8" />}
+            title="Staked Balance"
+            value={`${parseFloat(portfolio?.stakedBalance || "0").toFixed(4)} stCORE`}
+            subtext="Staked CORE Balance"
+            color="green"
+            loading={isLoading}
+          />
+          <StatCard
+            icon={<Activity className="w-8 h-8" />}
+            title="Borrowed Balance"
+            value={`${parseFloat(portfolio?.borrowedBalance || "0").toFixed(4)} CORE`}
+            subtext="Total Borrowed"
+            color="orange"
+            loading={isLoading}
+          />
+          <StatCard
+            icon={<TrendingUp className="w-8 h-8" />}
+            title="Health Factor"
+            value={portfolio?.healthFactor ? parseFloat(portfolio.healthFactor).toFixed(2) : 'N/A'}
+            subtext="Loan Health"
+            color="blue"
+            loading={isLoading}
+          />
         </div>
 
         {/* Charts and Market Overview */}
@@ -222,7 +242,10 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <IntentInput placeholder="Enter your next intent..." />
+          <IntentInput
+            placeholder="Enter your next intent..."
+            onNewResponse={handleNewResponse}
+          />
         </div>
 
         {/* Vault APY Cards */}
