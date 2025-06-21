@@ -7,6 +7,7 @@ import { MessageCircle, X, Send, Sparkles, Bot, User, Minimize2, Maximize2, Tras
 import { useUser } from "@civic/auth/react"
 import { useAccount } from "wagmi"
 import { API_URL } from "@/lib/config"
+import { toast as sonnerToast } from "sonner"
 
 interface Message {
   id: string
@@ -43,6 +44,28 @@ export default function GeminiChatbot({
   const { address } = useAccount()
 
   const sendMessageToServer = async (messageContent: string) => {
+    if (!address) {
+      sonnerToast.error("Wallet Not Connected", {
+        description: "Please connect your wallet to use the AI assistant.",
+      });
+      // Add the user message to the UI but don't send to server
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: messageContent,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: "I can't respond until you connect your wallet.",
+          sender: "ai",
+          timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev.filter(m => m.id !== 'initial-prompt'), userMessage, errorMessage]);
+      setInputValue(messageContent); // Keep the input value
+      return;
+    }
+
     setIsTyping(true);
     try {
       const response = await fetch(`${API_URL}/chatbot/query`, {
@@ -90,13 +113,8 @@ export default function GeminiChatbot({
 
   useEffect(() => {
     if (initialMessage) {
-      const userMessage: Message = {
-        id: 'initial-prompt',
-        content: initialMessage,
-        sender: 'user',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, userMessage]);
+      // Don't add the initial message to the state here.
+      // Let sendMessageToServer handle it so we don't get duplicates.
       sendMessageToServer(initialMessage);
     }
   }, [initialMessage]);
@@ -147,8 +165,8 @@ export default function GeminiChatbot({
       sender: "user",
       timestamp: new Date(),
     }
-
-    setMessages((prev) => [...prev, userMessage])
+    
+    setMessages((prev) => [...prev, userMessage]);
     setInputValue("")
     sendMessageToServer(inputValue)
   }
