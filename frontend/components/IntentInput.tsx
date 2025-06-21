@@ -24,13 +24,17 @@ interface IntentInputProps {
   className?: string
   onSignIn?: () => void
   onNewResponse?: (intent: string, response: string) => void
+  defaultValue?: string
+  onSubmit?: (intent: string) => void
 }
 
 export default function IntentInput({
-  placeholder = "e.g., Max yield on 0.5 BTC",
+  placeholder = "e.g., Stake 0.5 Core",
   className = "",
   onSignIn,
   onNewResponse,
+  defaultValue,
+  onSubmit,
 }: IntentInputProps) {
   const [intent, setIntent] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -51,6 +55,12 @@ export default function IntentInput({
   const [transactionId, setTransactionId] = useState<string | null>(null)
 
   const effectiveSignIn = onSignIn || civicSignIn
+
+  useEffect(() => {
+    if (defaultValue) {
+      setIntent(defaultValue);
+    }
+  }, [defaultValue]);
 
   // Effect to confirm transaction with backend
   useEffect(() => {
@@ -99,6 +109,11 @@ export default function IntentInput({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (onSubmit) {
+      onSubmit(intent)
+      return
+    }
 
     const loadingCondition = isLoading || isWritePending || isConfirming
     if (!intent.trim() || loadingCondition) {

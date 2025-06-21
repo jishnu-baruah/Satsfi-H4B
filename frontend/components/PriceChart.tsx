@@ -1,7 +1,18 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  Brush,
+} from "recharts"
 import { TrendingUp, TrendingDown, BarChart3, Activity } from "lucide-react"
 import { PriceService, type ChartDataPoint, type PriceData } from "@/services/priceService"
 
@@ -21,9 +32,10 @@ export default function PriceChart({ symbol, height = 400, showControls = true }
   useEffect(() => {
     const priceService = PriceService.getInstance()
 
-    const loadData = () => {
+    const loadData = async () => {
+      setIsLoading(true);
       const days = timeframe === "1D" ? 1 : timeframe === "7D" ? 7 : timeframe === "30D" ? 30 : 90
-      const data = priceService.getChartData(symbol, days)
+      const data = await priceService.getChartData(symbol, days)
       setChartData(data)
       setCurrentPrice(priceService.getPrice(symbol))
       setIsLoading(false)
@@ -232,6 +244,7 @@ export default function PriceChart({ symbol, height = 400, showControls = true }
                 strokeWidth={2}
                 fill={`url(#gradient-${symbol})`}
               />
+              <Brush dataKey="timestamp" height={30} stroke="#f97316" fill="#1f2937" tickFormatter={formatTimestamp} />
             </AreaChart>
           ) : (
             <LineChart data={chartData}>
@@ -247,6 +260,7 @@ export default function PriceChart({ symbol, height = 400, showControls = true }
                 dot={false}
                 activeDot={{ r: 6, fill: "#f97316" }}
               />
+              <Brush dataKey="timestamp" height={30} stroke="#f97316" fill="#1f2937" tickFormatter={formatTimestamp} />
             </LineChart>
           )}
         </ResponsiveContainer>

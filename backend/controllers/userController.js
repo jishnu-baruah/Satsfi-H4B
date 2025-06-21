@@ -8,18 +8,15 @@ const CORE_TESTNET_RPC_URL = "https://rpc.test2.btcs.network";
 const STCORE_ADDRESS = "0x5bDf8f6F713eb68E8740B6c764C389EE5a277990";
 const LENDING_POOL_ADDRESS = "0xFcE44C16e18F98d58dDC85b8c803B9CaBFeBf542";
 
-const getPortfolio = async (req, res) => {
+// This function is now self-contained and can be used by other controllers.
+const getPortfolioData = async (address) => {
     try {
-        const { address } = req.params;
-
         if (!CORE_TESTNET_RPC_URL) {
-            console.error("Server configuration error: RPC URL is missing.");
-            return res.status(500).json({ success: false, message: 'RPC URL is not configured on the server.' });
+            throw new Error("Server configuration error: RPC URL is missing.");
         }
         
         const provider = new ethers.JsonRpcProvider(CORE_TESTNET_RPC_URL);
 
-        // A user's staked balance IS their balance of the stCORE token.
         const stCoreContract = new ethers.Contract(
             STCORE_ADDRESS,
             ['function balanceOf(address) view returns (uint256)'],
@@ -40,22 +37,38 @@ const getPortfolio = async (req, res) => {
         const stakedBalance = ethers.formatEther(stakedBalanceWei);
         const borrowedBalance = ethers.formatEther(borrowedBalanceWei);
         
-        // Note: Health Factor calculation would require more ABI details and logic.
-        // This is a placeholder.
-        const healthFactor = "1.0";
+        const healthFactor = "1.0"; // Placeholder
 
-        res.status(200).json({
-            success: true,
-            data: {
-                stakedBalance,
-                borrowedBalance,
-                healthFactor,
-            },
-        });
+        return {
+            stakedBalance,
+            borrowedBalance,
+            healthFactor,
+        };
+    } catch (error) {
+        console.error(`Error fetching portfolio data for ${address}:`, error);
+        // Return null or throw a more specific error to be handled by the caller
+        return null;
+    }
+};
+
+
+const getPortfolio = async (req, res) => {
+    try {
+        const { address } = req.params;
+        const portfolioData = await getPortfolioData(address);
+
+        if (portfolioData) {
+            res.status(200).json({
+                success: true,
+                data: portfolioData,
+            });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to fetch on-chain portfolio data.' });
+        }
 
     } catch (error) {
-        console.error("Error fetching portfolio for address:", req.params.address, error);
-        res.status(500).json({ success: false, message: 'Failed to fetch on-chain portfolio data.', error: error.message });
+        console.error("Error in getPortfolio handler:", error);
+        res.status(500).json({ success: false, message: 'An internal error occurred.' });
     }
 };
 
@@ -89,4 +102,4 @@ const linkUser = async (req, res) => {
 };
 
 
-module.exports = { getPortfolio, linkUser };
+module.exports = { getPortfolio, linkUser, getPortfolioData };

@@ -7,6 +7,23 @@ const Transaction = require('../models/Transaction');
 // const stakingController = require('./stakingController');
 // const lendingController = require('./lendingController');
 
+const buildIntentPrompt = (intent) => {
+    return `
+You are an intent parser for a DeFi application. Your task is to analyze the user's request and convert it into a structured JSON object.
+
+The user can perform actions like: 'stake', 'borrow', 'repay', 'withdraw'.
+
+Based on the following user input, create a JSON object with the keys: "action", "amount", "asset".
+- "action" must be one of: "stake", "borrow", "repay", "withdraw", "unknown".
+- "amount" should be a number.
+- "asset" should be the ticker symbol (e.g., "CORE", "stCORE").
+
+User Input: "${intent}"
+
+JSON Output (provide only the JSON object):
+    `;
+};
+
 const processIntent = async (req, res) => {
     const { intent, userAddress } = req.body;
     if (!intent) {
@@ -21,7 +38,13 @@ const processIntent = async (req, res) => {
     });
 
     try {
-        const parsedIntent = await geminiService.parseIntent(intent);
+        const intentPrompt = buildIntentPrompt(intent);
+        const rawResponse = await geminiService.generateResponse(intentPrompt);
+        
+        // Clean up the text to ensure it's valid JSON before parsing
+        const cleanedResponse = rawResponse.replace(/```json|```/g, '').trim();
+        const parsedIntent = JSON.parse(cleanedResponse);
+
         transaction.parsed_intent = parsedIntent;
 
         // Handle cases where Gemini could not parse the intent

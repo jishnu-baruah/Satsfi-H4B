@@ -120,26 +120,43 @@ export class PriceService {
     }
   }
 
-  // --- Mocked Chart Data - Can be replaced with a real API later ---
-  getChartData(symbol: string, days = 30): ChartDataPoint[] {
-    const data: ChartDataPoint[] = []
-    const basePrice = this.priceData[symbol]?.price || (symbol === 'BTC' ? 65000 : 2300)
-    const now = Date.now()
-  
-    for (let i = days; i >= 0; i--) {
-      const timestamp = now - i * 24 * 60 * 60 * 1000
-      const volatility = symbol === "BTC" ? 0.05 : symbol === "ETH" ? 0.07 : 0.001
-      const randomChange = (Math.random() - 0.5) * volatility
-      const price = basePrice * (1 + randomChange * (i / days))
-      const volume = Math.random() * 1000000000 + 500000000
-  
-      data.push({
-        timestamp,
-        price: Math.round(price * 100) / 100,
-        volume: Math.round(volume),
-      })
+  async fetchChartData(symbol: string, days: number): Promise<ChartDataPoint[]> {
+    try {
+        const id = this.symbolToId(symbol);
+        if (!id) throw new Error(`Unsupported symbol: ${symbol}`);
+
+        const url = `${API_URL}/prices/historical?id=${id}&days=${days}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch chart data: ${response.statusText}`);
+        }
+        const data = await response.json();
+
+        // The API returns {prices: [[timestamp, price]], total_volumes: [[timestamp, volume]]}
+        return data.prices.map((p: [number, number], index: number) => ({
+            timestamp: p[0],
+            price: p[1],
+            volume: data.total_volumes[index] ? data.total_volumes[index][1] : 0,
+        }));
+    } catch (error) {
+        console.error(`Error fetching chart data for ${symbol}:`, error);
+        return []; // Return empty array on error
     }
+  }
+
+  // Helper to convert symbol to CoinGecko ID
+  private symbolToId(symbol: string): string | null {
+      const map: { [key: string]: string } = {
+          'BTC': 'bitcoin',
+          'ETH': 'ethereum',
+          'USDC': 'usd-coin',
+          'USDT': 'tether',
+          'CORE': 'coredaoorg'
+      };
+      return map[symbol] || null;
+  }
   
-    return data.sort((a, b) => a.timestamp - b.timestamp)
+  getChartData(symbol: string, days = 30): Promise<ChartDataPoint[]> {
+      return this.fetchChartData(symbol, days);
   }
 }

@@ -17,11 +17,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true)
-    // If the user is signed in, redirect them to the dashboard.
-    if (user) {
-      router.push("/dashboard")
-    }
-  }, [user, router])
+  }, [])
 
   const scrollToHero = () => {
     heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -29,34 +25,30 @@ export default function HomePage() {
 
   const handleSignIn = () => {
     scrollToHero()
-    // Add a small delay to ensure the scroll starts before the sign-in modal potentially locks the screen
+    setTimeout(() => signIn(), 100)
+  }
+
+  const handleDashboardClick = () => {
+    if (user) {
+      router.push("/dashboard")
+    } else {
+      handleSignIn()
+    }
+  }
+
+  const handleIntentSubmit = (intent: string) => {
+    console.log("Intent submitted:", intent)
     setTimeout(() => {
-      signIn()
-    }, 100)
+      router.push("/dashboard")
+    }, 500)
   }
 
   const handleTryDemo = () => {
-    if (!user) {
-      scrollToHero()
-      setShowDemo(true)
-    } else {
-      // Since the user is logged in, we can also just send them to the dashboard
-      router.push("/dashboard")
-    }
+    scrollToHero()
+    setShowDemo(true)
   }
 
-  const handleGoToDashboard = () => {
-    if (!user) {
-      handleSignIn()
-    } else {
-      router.push("/dashboard")
-    }
-  }
-
-  if (!mounted || user) {
-    // Show nothing or a loading spinner while checking auth state or redirecting
-    return null
-  }
+  if (!mounted) return null
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
@@ -109,21 +101,12 @@ export default function HomePage() {
 
             <div className="flex items-center gap-4">
               <button
-                onClick={() => {
-                  if (!user) {
-                    handleSignIn()
-                  } else {
-                    router.push("/dashboard")
-                  }
-                }}
+                onClick={handleDashboardClick}
                 className="hidden sm:block text-gray-400 hover:text-white transition-all duration-300 px-4 py-2 rounded-lg hover:bg-white/5"
               >
                 Dashboard
               </button>
-              <button
-                onClick={handleSignIn}
-                className="btn-primary text-sm font-bold flex items-center"
-              >
+              <button onClick={handleSignIn} className="btn-primary text-sm font-bold flex items-center">
                 <Zap className="w-4 h-4 mr-2" />
                 Get Started
               </button>
@@ -134,69 +117,76 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <div ref={heroRef} className="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 text-center">
-        <div className="mb-8 slide-up">
-          <div
-            className="inline-flex items-center gap-2 px-6 py-3 border rounded-full text-sm mb-8 pulse-subtle"
+        <div className="absolute inset-0 bg-gradient-to-r from-[#B4FF3C]/5 via-[#4FFF7B]/5 to-[#B4FF3C]/5 rounded-3xl blur-3xl opacity-60 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#B4FF3C]/3 to-transparent rounded-3xl" />
+
+        <div className="relative z-10">
+          <div className="mb-8 slide-up">
+            <div
+              className="inline-flex items-center gap-2 px-6 py-3 border rounded-full text-sm mb-8 pulse-subtle"
+              style={{
+                backgroundColor: "rgba(180, 255, 60, 0.05)",
+                borderColor: "rgba(180, 255, 60, 0.2)",
+                color: "#B4FF3C",
+                boxShadow: "0 0 20px rgba(180, 255, 60, 0.1)",
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+              AI-Powered Onchain Banking
+            </div>
+          </div>
+
+          <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight slide-up slide-up-delay-1">
+            <span className="gradient-text block mb-4">On-chain Banking</span>
+            <span className="text-white block mb-4">Starts with Your</span>
+            <span className="gradient-text block">Intent</span>
+          </h1>
+
+          <p
+            className="text-xl md:text-2xl mb-16 max-w-3xl mx-auto leading-relaxed slide-up slide-up-delay-2"
+            style={{ color: "#9CA3AF" }}
+          >
+            <span className="text-white font-semibold">Stake. Borrow. Earn.</span> All in one sentence.
+            <br />
+            <span className="text-gray-500">Let AI optimize your Onchain Banking strategy automatically.</span>
+          </p>
+
+          <div className="max-w-3xl mx-auto mb-12 slide-up slide-up-delay-3">
+            <IntentInput
+              placeholder={showDemo ? "Borrow 2,000 CORE without selling stCORE" : "e.g., Max yield on 0.5 stCORE"}
+              defaultValue={showDemo ? "Borrow 2,000 CORE without selling stCORE" : ""}
+              onSubmit={handleIntentSubmit}
+              className="mb-8"
+              onSignIn={handleSignIn}
+            />
+          </div>
+
+          <button
+            onClick={handleTryDemo}
+            className="group font-semibold flex items-center gap-3 mx-auto mb-20 transition-all duration-500 px-8 py-4 rounded-xl border border-transparent hover:scale-105 card-hover-effect"
             style={{
+              color: "#B4FF3C",
               backgroundColor: "rgba(180, 255, 60, 0.05)",
               borderColor: "rgba(180, 255, 60, 0.2)",
-              color: "#B4FF3C",
-              boxShadow: "0 0 20px rgba(180, 255, 60, 0.1)",
+            }}
+            onMouseEnter={(e) => {
+              const target = e.currentTarget as HTMLButtonElement;
+              target.style.color = "#4FFF7B"
+              target.style.backgroundColor = "rgba(180, 255, 60, 0.1)"
+              target.style.boxShadow = "0 10px 30px rgba(180, 255, 60, 0.2)"
+            }}
+            onMouseLeave={(e) => {
+              const target = e.currentTarget as HTMLButtonElement;
+              target.style.color = "#B4FF3C"
+              target.style.backgroundColor = "rgba(180, 255, 60, 0.05)"
+              target.style.boxShadow = "none"
             }}
           >
-            <Sparkles className="w-4 h-4" />
-            AI-Powered Bitcoin Banking
-          </div>
+            <Sparkles className="w-5 h-5 group-hover:animate-spin transition-transform duration-300" />
+            Try Demo
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
+          </button>
         </div>
-
-        <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight slide-up slide-up-delay-1">
-          <span className="gradient-text block mb-4">Smart Bitcoin Banking</span>
-          <span className="text-white block mb-4">Starts with Your</span>
-          <span className="gradient-text block">Intent</span>
-        </h1>
-
-        <p
-          className="text-xl md:text-2xl mb-16 max-w-3xl mx-auto leading-relaxed slide-up slide-up-delay-2"
-          style={{ color: "#9CA3AF" }}
-        >
-          <span className="text-white font-semibold">Stake. Borrow. Earn.</span> All in one sentence.
-          <br />
-          <span className="text-gray-500">Let AI optimize your Bitcoin strategy automatically.</span>
-        </p>
-
-        {/* Intent Input */}
-        <div className="max-w-3xl mx-auto mb-12 slide-up slide-up-delay-3">
-          <IntentInput
-            placeholder={showDemo ? "Borrow 2,000 USDC without selling BTC" : "e.g., Max yield on 0.5 BTC"}
-            className="mb-8"
-            onSignIn={handleSignIn}
-          />
-        </div>
-
-        {/* Try Demo Button */}
-        <button
-          onClick={handleTryDemo}
-          className="group font-semibold flex items-center gap-3 mx-auto mb-20 transition-all duration-500 px-8 py-4 rounded-xl border border-transparent hover:scale-105 card-hover-effect"
-          style={{
-            color: "#B4FF3C",
-            backgroundColor: "rgba(180, 255, 60, 0.05)",
-            borderColor: "rgba(180, 255, 60, 0.2)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "#4FFF7B"
-            e.currentTarget.style.backgroundColor = "rgba(180, 255, 60, 0.1)"
-            e.currentTarget.style.boxShadow = "0 10px 30px rgba(180, 255, 60, 0.2)"
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "#B4FF3C"
-            e.currentTarget.style.backgroundColor = "rgba(180, 255, 60, 0.05)"
-            e.currentTarget.style.boxShadow = "none"
-          }}
-        >
-          <Sparkles className="w-5 h-5 group-hover:animate-spin transition-transform duration-300" />
-          Try Demo
-          <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
-        </button>
       </div>
 
       {/* Features Section */}
@@ -207,7 +197,7 @@ export default function HomePage() {
         <div className="text-center mb-16">
           <h2 className="text-white font-bold text-4xl mb-6 gradient-text-subtle">How It Works</h2>
           <p className="text-xl max-w-2xl mx-auto" style={{ color: "#9CA3AF" }}>
-            Three simple steps to start earning with your Bitcoin
+            Three simple steps to start earning with your Onchain Assets
           </p>
         </div>
 
@@ -215,7 +205,7 @@ export default function HomePage() {
           {[1, 2, 3].map((step, index) => {
             const titles = ["Connect Wallet", "Set Your Intent", "Earn Automatically"]
             const descriptions = [
-              "Securely connect your Bitcoin wallet and maintain full custody of your assets",
+              "Securely connect your wallet and maintain full custody of your assets",
               "Tell our AI what you want to achieve in plain English - no complex DeFi knowledge required",
               "Our AI optimizes your strategy across protocols and manages everything automatically",
             ]
@@ -272,7 +262,6 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* Enhanced Connection Flow */}
         <div className="hidden md:flex justify-center items-center mt-16 space-x-8">
           <div
             className="w-20 h-1 rounded-full"
@@ -295,7 +284,7 @@ export default function HomePage() {
         <div className="glass-card neon-border p-12 max-w-4xl mx-auto card-hover-effect">
           <h2 className="text-white font-bold text-4xl mb-6 gradient-text-subtle">Ready to Start Earning?</h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto leading-relaxed" style={{ color: "#9CA3AF" }}>
-            Join thousands of users who are already earning passive income with their Bitcoin through AI-powered DeFi
+            Join thousands of users who are already earning passive income with their Web3 assets through AI-powered DeFi
             strategies.
           </p>
 
@@ -307,13 +296,13 @@ export default function HomePage() {
               <Sparkles className="w-5 h-5" />
               Try Demo Now
             </button>
-            <button
-              onClick={handleGoToDashboard}
+            <Link
+              href="/dashboard"
               className="btn-secondary text-lg font-semibold flex items-center justify-center gap-3"
             >
               Go to Dashboard
               <ArrowRight className="w-5 h-5" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>

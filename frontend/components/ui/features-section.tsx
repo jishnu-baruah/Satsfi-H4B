@@ -10,13 +10,13 @@ export default function FeaturesSection() {
     {
       title: "AI-Powered Optimization",
       description:
-        "Our Gemini AI continuously monitors 50+ DeFi protocols to maximize your Bitcoin yields automatically.",
+        "Our Gemini AI continuously monitors Core DeFi protocols to maximize your stCORE yields automatically.",
       skeleton: <SkeletonOne />,
       className: "col-span-1 lg:col-span-4 border-b lg:border-r border-gray-800/50",
     },
     {
-      title: "Secure Bitcoin Staking",
-      description: "Stake your Bitcoin across multiple protocols while maintaining full custody and control.",
+      title: "Secure CORE Staking",
+      description: "Stake your CORE tokens across multiple Core protocols while maintaining full custody and control.",
       skeleton: <SkeletonTwo />,
       className: "border-b col-span-1 lg:col-span-2 border-gray-800/50",
     },
@@ -39,11 +39,11 @@ export default function FeaturesSection() {
     <div className="relative z-20 py-20 lg:py-40 max-w-7xl mx-auto">
       <div className="px-8">
         <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-white">
-          Built for Bitcoin Maximalists
+          Built for Web3 Maximalists
         </h4>
 
         <p className="text-sm lg:text-base max-w-2xl my-4 mx-auto text-gray-400 text-center font-normal">
-          From staking to borrowing, SatsFi provides everything you need to maximize your Bitcoin's potential while
+          From staking to borrowing, SatsFi provides everything you need to maximize your Web3 assets' potential while
           maintaining full control and security.
         </p>
       </div>

@@ -12,6 +12,7 @@ import { Sparkles, TrendingUp, DollarSign, Activity, BarChart3, RefreshCw } from
 import { useUser } from "@civic/auth/react"
 import { usePortfolio } from "@/hooks/usePortfolio"
 import { Skeleton } from "@/components/ui/skeleton"
+import GeminiChatbot from "@/components/GeminiChatbot"
 
 // Enhanced mock data
 const vaults = [
@@ -92,10 +93,10 @@ const alerts = [
 ]
 
 export default function Dashboard() {
-  const [lastIntent, setLastIntent] = useState("Max yield on 0.5 BTC")
-  const [systemResponse, setSystemResponse] = useState("Staked into Pell Vault @ 6.1%")
+  const [lastIntent, setLastIntent] = useState("Stake 0.5 Core")
+  const [systemResponse, setSystemResponse] = useState("Staked into stCORE Vault")
   const [mounted, setMounted] = useState(false)
-  const [selectedChart, setSelectedChart] = useState<"BTC" | "ETH">("BTC")
+  const [selectedChart, setSelectedChart] = useState<"BTC" | "ETH" | "CORE">("BTC")
   const { user } = useUser();
   const { portfolio, isLoading, error, refetch } = usePortfolio();
 
@@ -208,6 +209,16 @@ export default function Dashboard() {
                   }`}
                 >
                   ETH
+                </button>
+                <button
+                  onClick={() => setSelectedChart("CORE")}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-all duration-200 ${
+                    selectedChart === "CORE"
+                      ? "bg-orange-500 text-white"
+                      : "text-gray-400 hover:text-white hover:bg-gray-700/50"
+                  }`}
+                >
+                  CORE
                 </button>
               </div>
             </div>
@@ -363,6 +374,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <GeminiChatbot />
     </div>
   )
 }
