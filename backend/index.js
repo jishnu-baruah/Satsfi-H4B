@@ -4,10 +4,11 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const intentRoutes = require('./routes/intentRoutes');
 const priceRoutes = require('./routes/priceRoutes');
+const userRoutes = require('./routes/userRoutes');
 const priceCacheService = require('./services/priceCacheService');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Request Logger Middleware
 app.use((req, res, next) => {
@@ -22,6 +23,7 @@ app.use(express.json());
 // Routes
 app.use('/api/intent', intentRoutes);
 app.use('/api/prices', priceRoutes);
+app.use('/api/user', userRoutes);
 
 // Start services
 priceCacheService.start();

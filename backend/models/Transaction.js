@@ -7,6 +7,11 @@ const transactionSchema = new Schema({
     type: String,
     required: true,
   },
+  userAddress: {
+    type: String,
+    required: false, // Not all old transactions will have this
+    index: true, // Index for faster querying
+  },
   parsed_intent: {
     type: Object,
     required: true,
@@ -14,16 +19,12 @@ const transactionSchema = new Schema({
   status: {
     type: String,
     required: true,
-    default: 'pending', // e.g., pending, success, failed
+    default: 'pending_review', // pending_review, success, failed
   },
   response_message: {
     type: String,
     required: false,
   },
-  user_address: { // Will be added later with Civic integration
-    type: String,
-    required: false, 
-  }
 }, {
   timestamps: true,
 });

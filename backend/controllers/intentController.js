@@ -8,24 +8,28 @@ const Transaction = require('../models/Transaction');
 // const lendingController = require('./lendingController');
 
 const processIntent = async (req, res) => {
-    const { intent } = req.body;
+    const { intent, userAddress } = req.body;
     if (!intent) {
         return res.status(400).json({ success: false, message: 'Intent is required.' });
     }
 
+    // Create the initial transaction record
+    const transaction = new Transaction({
+        raw_intent: intent,
+        userAddress,
+        parsed_intent: {}, // Start with an empty object
+    });
+
     try {
         const parsedIntent = await geminiService.parseIntent(intent);
+        transaction.parsed_intent = parsedIntent;
 
         // Handle cases where Gemini could not parse the intent
-        if (!parsedIntent) {
-            const transaction = new Transaction({
-                raw_intent: intent,
-                parsed_intent: { intent: 'UNKNOWN' },
-                status: 'failed',
-                response_message: 'Could not understand the request. Please try rephrasing.',
-            });
+        if (!parsedIntent || !parsedIntent.action) {
+            transaction.status = 'failed';
+            transaction.response_message = 'Could not understand the request. Please try rephrasing.';
             await transaction.save();
-            return res.status(400).json({ success: false, message: "Sorry, I couldn't understand that. Please try rephrasing your request." });
+            return res.status(400).json({ success: false, message: transaction.response_message });
         }
         
         let result;
@@ -33,28 +37,29 @@ const processIntent = async (req, res) => {
         // Route to the appropriate controller based on the parsed action
         switch (parsedIntent.action) {
             case 'stake':
-                result = await stakingController.stake(parsedIntent, intent);
+                result = await stakingController.stake(transaction);
                 break;
             case 'borrow':
-                result = await lendingController.borrow(parsedIntent, intent);
+                result = await lendingController.borrow(transaction);
                 break;
             default:
-                // If the action is unknown, save it as a pending transaction for review
-                const transaction = new Transaction({
-                    raw_intent: intent,
-                    parsed_intent: parsedIntent,
-                    status: 'pending_review',
-                    response_message: 'Action not recognized.',
-                });
+                transaction.status = 'failed';
+                transaction.response_message = `Action '${parsedIntent.action}' is not supported yet.`;
                 await transaction.save();
-                return res.status(400).json({ success: false, message: `Action '${parsedIntent.action}' is not supported.` });
+                result = { success: false, message: transaction.response_message };
         }
 
         res.status(200).json(result);
 
     } catch (error) {
         console.error("Error processing intent:", error);
-        res.status(500).json({ success: false, message: 'Failed to process intent.', error: error.message });
+        transaction.status = 'failed';
+        transaction.response_message = 'An internal error occurred while processing the intent.';
+        // Don't re-throw, just save the transaction with an error state
+        await transaction.save().catch(saveError => {
+            console.error("Error saving transaction after an error:", saveError);
+        });
+        res.status(500).json({ success: false, message: transaction.response_message, error: error.message });
     }
 };
 

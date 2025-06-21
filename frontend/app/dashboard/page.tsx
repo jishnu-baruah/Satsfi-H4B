@@ -100,16 +100,6 @@ export default function Dashboard() {
     setMounted(true)
   }, [])
 
-  const handleIntentSubmit = (intent: string) => {
-    setLastIntent(intent)
-    setTimeout(() => {
-      setSystemResponse("Processing your request...")
-      setTimeout(() => {
-        setSystemResponse("Successfully optimized your position!")
-      }, 2000)
-    }, 1000)
-  }
-
   if (!mounted) return null
 
   return (
@@ -232,7 +222,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <IntentInput placeholder="Enter your next intent..." onSubmit={handleIntentSubmit} />
+          <IntentInput placeholder="Enter your next intent..." />
         </div>
 
         {/* Vault APY Cards */}
@@ -258,9 +248,9 @@ export default function Dashboard() {
                         className={`w-2 h-2 rounded-full ${
                           vault.risk === "low"
                             ? "bg-green-400/60"
-                            : vault.risk === "high"
-                              ? "bg-red-400/60"
-                              : "bg-yellow-400/60"
+                            : vault.risk === "medium"
+                              ? "bg-yellow-400/60"
+                              : "bg-red-400/60"
                         } group-hover:scale-110 transition-transform duration-300`}
                       />
                     </div>

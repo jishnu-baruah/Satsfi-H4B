@@ -4,15 +4,19 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, X, Home, BarChart3, History, TrendingUp, Settings } from "lucide-react"
-import { UserButton } from "@civic/auth/react"
+import { UserButton, useUser } from "@civic/auth/react"
+import { useAccount } from "wagmi"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { ConnectWalletButton } from "./ConnectWalletButton"
+import { API_URL } from "@/lib/config"
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
+  const { user } = useUser()
+  const { address } = useAccount()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +25,31 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  useEffect(() => {
+    const linkUser = async () => {
+      if (user?.email && address) {
+        try {
+          await fetch(`${API_URL}/user/link`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: user.email,
+              walletAddress: address,
+            }),
+          });
+          // We can console.log the response here for debugging if needed
+          // console.log('User link response:', await response.json());
+        } catch (error) {
+          console.error("Failed to link user:", error);
+        }
+      }
+    };
+
+    linkUser();
+  }, [user, address]);
 
   const navItems = [
     { name: "Home", href: "/", icon: Home },

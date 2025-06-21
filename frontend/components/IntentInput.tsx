@@ -4,40 +4,71 @@ import type React from "react"
 import { useState } from "react"
 import { Loader2, Send, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Button } from "./ui/button"
+import { Textarea } from "./ui/textarea"
+import { useUser } from "@civic/auth/react"
+import { API_URL } from "@/lib/config"
+import { ToastAction } from "./ui/toast"
+import { useAccount } from "wagmi"
 
 interface IntentInputProps {
   placeholder?: string
-  onSubmit?: (intent: string) => void
   className?: string
-  defaultValue?: string
+  onSignIn?: () => void
 }
 
 export default function IntentInput({
   placeholder = "e.g., Max yield on 0.5 BTC",
-  onSubmit,
   className = "",
-  defaultValue = "",
+  onSignIn,
 }: IntentInputProps) {
-  const [intent, setIntent] = useState(defaultValue)
+  const [intent, setIntent] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const { user, signIn: civicSignIn } = useUser()
+  const { address } = useAccount()
+
+  const effectiveSignIn = onSignIn || civicSignIn
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!intent.trim() || isLoading) return
 
+    if (!user) {
+      setIsLoading(true)
+      setTimeout(() => {
+        toast({
+          title: "🤖 SatsFi AI",
+          description: "That's a great question! Sign in to get a personalized answer and start using SatsFi.",
+          action: <ToastAction altText="Sign In" onClick={() => effectiveSignIn()}>Sign In</ToastAction>,
+        })
+        setIsLoading(false)
+      }, 500)
+      return
+    }
+
     setIsLoading(true)
     
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/intent/process`, {
+      const userAddress = address
+      if (!userAddress) {
+        throw new Error("Could not find user wallet address. Please connect your wallet.")
+      }
+
+      const response = await fetch(`${API_URL}/intent/process`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          intent: intent,
+          userAddress: userAddress,
+        }),
       })
 
-      const data = await res.json()
+      const data = await response.json()
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error(data.message || 'An unexpected error occurred.')
       }
 
@@ -48,7 +79,6 @@ export default function IntentInput({
       })
       
       setIntent("")
-      onSubmit?.(intent)
     } catch (err: any) {
       toast({
         title: "Error",

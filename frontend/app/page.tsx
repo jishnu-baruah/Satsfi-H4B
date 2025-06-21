@@ -1,32 +1,62 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import IntentInput from "@/components/IntentInput"
 import FeaturesSection from "@/components/ui/features-section"
 import { ArrowRight, Sparkles, Zap } from "lucide-react"
 import Link from "next/link"
-import { UserButton } from "@civic/auth/react"
+import { useUser } from "@civic/auth/react"
 
 export default function HomePage() {
   const [showDemo, setShowDemo] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const { user, signIn } = useUser()
+  const router = useRouter()
+  const heroRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    // If the user is signed in, redirect them to the dashboard.
+    if (user) {
+      router.push("/dashboard")
+    }
+  }, [user, router])
 
-  const handleIntentSubmit = (intent: string) => {
-    console.log("Intent submitted:", intent)
+  const scrollToHero = () => {
+    heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  const handleSignIn = () => {
+    scrollToHero()
+    // Add a small delay to ensure the scroll starts before the sign-in modal potentially locks the screen
     setTimeout(() => {
-      window.location.href = "/dashboard"
-    }, 1000)
+      signIn()
+    }, 100)
   }
 
   const handleTryDemo = () => {
-    setShowDemo(true)
+    if (!user) {
+      scrollToHero()
+      setShowDemo(true)
+    } else {
+      // Since the user is logged in, we can also just send them to the dashboard
+      router.push("/dashboard")
+    }
   }
 
-  if (!mounted) return null
+  const handleGoToDashboard = () => {
+    if (!user) {
+      handleSignIn()
+    } else {
+      router.push("/dashboard")
+    }
+  }
+
+  if (!mounted || user) {
+    // Show nothing or a loading spinner while checking auth state or redirecting
+    return null
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
@@ -78,20 +108,32 @@ export default function HomePage() {
             </Link>
 
             <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
+              <button
+                onClick={() => {
+                  if (!user) {
+                    handleSignIn()
+                  } else {
+                    router.push("/dashboard")
+                  }
+                }}
                 className="hidden sm:block text-gray-400 hover:text-white transition-all duration-300 px-4 py-2 rounded-lg hover:bg-white/5"
               >
                 Dashboard
-              </Link>
-              <UserButton />
+              </button>
+              <button
+                onClick={handleSignIn}
+                className="btn-primary text-sm font-bold flex items-center"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Get Started
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <div className="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 text-center">
+      <div ref={heroRef} className="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 text-center">
         <div className="mb-8 slide-up">
           <div
             className="inline-flex items-center gap-2 px-6 py-3 border rounded-full text-sm mb-8 pulse-subtle"
@@ -126,9 +168,8 @@ export default function HomePage() {
         <div className="max-w-3xl mx-auto mb-12 slide-up slide-up-delay-3">
           <IntentInput
             placeholder={showDemo ? "Borrow 2,000 USDC without selling BTC" : "e.g., Max yield on 0.5 BTC"}
-            defaultValue={showDemo ? "Borrow 2,000 USDC without selling BTC" : ""}
-            onSubmit={handleIntentSubmit}
             className="mb-8"
+            onSignIn={handleSignIn}
           />
         </div>
 
@@ -266,13 +307,13 @@ export default function HomePage() {
               <Sparkles className="w-5 h-5" />
               Try Demo Now
             </button>
-            <Link
-              href="/dashboard"
+            <button
+              onClick={handleGoToDashboard}
               className="btn-secondary text-lg font-semibold flex items-center justify-center gap-3"
             >
               Go to Dashboard
               <ArrowRight className="w-5 h-5" />
-            </Link>
+            </button>
           </div>
         </div>
       </div>

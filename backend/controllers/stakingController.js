@@ -1,23 +1,20 @@
 const Transaction = require('../models/Transaction');
 
-const stake = async (intent, raw_intent) => {
-    console.log("Staking controller called with intent:", intent);
-    
-    // 1. Create a mock success message
-    const amount = intent.amount;
-    const asset = intent.asset.toUpperCase();
-    const responseMessage = `Successfully staked ${amount} ${asset}. You are now earning 6.2% APY in the Pell Vault.`;
+const stake = async (transaction) => {
+    // This is a placeholder for real staking logic.
+    // For now, we'll just mark the transaction as successful.
+    console.log("Staking controller called with transaction:", transaction);
 
-    // 2. Save the mock transaction to the database
-    const transaction = new Transaction({
-        raw_intent: raw_intent,
-        parsed_intent: intent,
-        status: 'success',
-        response_message: responseMessage,
-    });
+    const amount = transaction.parsed_intent.amount;
+    const asset = transaction.parsed_intent.asset.toUpperCase();
+
+    const responseMessage = `Successfully staked ${amount} ${asset} in the ${transaction.parsed_intent.vault || 'default'} vault. You are now earning a promotional APY of 7.2%.`;
+    
+    transaction.status = 'success';
+    transaction.response_message = responseMessage;
+    
     await transaction.save();
 
-    // 3. Return the success message
     return { success: true, message: responseMessage };
 };
 

@@ -17,12 +17,15 @@ import {
   X,
   Loader,
   AlertTriangle,
+  Users,
+  User,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { exportToCSV, exportToJSON } from "@/utils/exportTransactions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { API_URL } from "@/lib/config"
 import { PriceService, PriceData } from "@/services/priceService"
+import { useAccount } from "wagmi"
 
 interface Transaction {
   id: string
@@ -105,6 +108,8 @@ export default function HistoryPage() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [historyView, setHistoryView] = useState<"all" | "user">("all")
+  const { address, isConnected } = useAccount()
 
   useEffect(() => {
     const fetchAndTransformTransactions = async () => {
@@ -112,18 +117,30 @@ export default function HistoryPage() {
       setError(null)
       try {
         // 1. Fetch live prices first
-        const priceService = PriceService.getInstance();
-        const prices = await priceService.fetchLatestPrices();
+        const priceService = PriceService.getInstance()
+        const prices = await priceService.fetchLatestPrices()
 
-        // 2. Fetch raw transactions from our backend
-        const response = await fetch(`${API_URL}/intent/transactions`)
+        // 2. Determine API endpoint based on selected view
+        let apiUrl = `${API_URL}/intent/transactions`
+        if (historyView === "user") {
+          if (!isConnected || !address) {
+            // If user view is selected but wallet is not connected, show empty state
+            setTransactions([])
+            setIsLoading(false)
+            return
+          }
+          apiUrl = `${API_URL}/intent/transactions/${address}`
+        }
+
+        // 3. Fetch raw transactions from our backend
+        const response = await fetch(apiUrl)
         if (!response.ok) {
           const errorData = await response.json()
           throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
         }
         const result = await response.json()
 
-        // 3. Transform transactions using live price data
+        // 4. Transform transactions using live price data
         if (result.success) {
           const transformedTxs = result.data.map((tx: any) => transformTransaction(tx, prices))
           setTransactions(transformedTxs)
@@ -144,7 +161,7 @@ export default function HistoryPage() {
     }
 
     fetchAndTransformTransactions()
-  }, [toast])
+  }, [toast, historyView, address, isConnected])
 
   // Filter and search logic
   useEffect(() => {
@@ -305,7 +322,29 @@ export default function HistoryPage() {
             <p className="text-gray-400">Track all your DeFi activities and transactions</p>
           </div>
 
-          <div className="flex gap-3 mt-4 md:mt-0">
+          <div className="flex items-center gap-3 mt-4 md:mt-0">
+            {/* View Toggle */}
+            <div className="flex items-center bg-gray-800/50 border border-gray-700/50 rounded-xl p-1">
+              <button
+                onClick={() => setHistoryView("all")}
+                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm transition-all duration-200 ${
+                  historyView === "all" ? "bg-orange-500/30 text-white" : "text-gray-400 hover:bg-gray-700/50"
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                All
+              </button>
+              <button
+                onClick={() => setHistoryView("user")}
+                disabled={!isConnected}
+                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm transition-all duration-200 ${
+                  historyView === "user" ? "bg-orange-500/30 text-white" : "text-gray-400 hover:bg-gray-700/50"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <User className="w-4 h-4" />
+                My History
+              </button>
+            </div>
             <button onClick={() => handleExport("csv")} className="btn-secondary flex items-center gap-2">
               <Download className="w-4 h-4" />
               CSV
