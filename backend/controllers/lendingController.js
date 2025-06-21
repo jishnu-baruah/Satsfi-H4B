@@ -3,6 +3,19 @@ const Transaction = require('../models/Transaction');
 const borrow = async (intent, raw_intent) => {
     console.log("Lending controller called with intent:", intent);
 
+    // Validate that collateral has been provided
+    if (!intent.collateral) {
+        const errorMessage = "Could not process borrow request. Please specify which asset to use as collateral (e.g., 'borrow 5000 USDC against my BTC').";
+        const transaction = new Transaction({
+            raw_intent: raw_intent,
+            parsed_intent: intent,
+            status: 'failed',
+            response_message: errorMessage,
+        });
+        await transaction.save();
+        return { success: false, message: errorMessage };
+    }
+
     // 1. Create a mock success message
     const amount = intent.amount;
     const asset = intent.asset.toUpperCase();
