@@ -7,10 +7,16 @@ const priceRoutes = require('./routes/priceRoutes');
 const priceCacheService = require('./services/priceCacheService');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
+
+// Request Logger Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] INCOMING: ${req.method} ${req.originalUrl}`);
+    next();
+});
 
 // Middleware
-app.use(cors());
+app.use(cors()); // Allow all origins
 app.use(express.json());
 
 // Routes

@@ -1,3 +1,5 @@
+import { API_URL } from "@/lib/config";
+
 export interface PriceData {
   symbol: string
   name: string
@@ -71,7 +73,7 @@ export class PriceService {
   // Fetches live data from our own backend proxy
   async fetchLatestPrices(): Promise<Record<string, PriceData>> {
     try {
-      const url = `http://localhost:5000/api/prices`;
+      const url = `${API_URL}/prices`;
       
       const response = await fetch(url);
       if (!response.ok) {

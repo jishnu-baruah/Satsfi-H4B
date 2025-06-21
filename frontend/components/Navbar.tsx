@@ -71,7 +71,7 @@ export default function Navbar() {
 
             <div className="relative ml-4">
               <ConnectWalletButton />
-            </div>
+                </div>
             <div className="relative ml-4">
               <UserButton />
             </div>
