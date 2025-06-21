@@ -17,10 +17,16 @@ interface Message {
 
 interface GeminiChatbotProps {
   className?: string
+  startOpen?: boolean
+  initialMessage?: string
 }
 
-export default function GeminiChatbot({ className = "" }: GeminiChatbotProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export default function GeminiChatbot({
+  className = "",
+  startOpen = false,
+  initialMessage,
+}: GeminiChatbotProps) {
+  const [isOpen, setIsOpen] = useState(startOpen)
   const [isMinimized, setIsMinimized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -35,6 +41,65 @@ export default function GeminiChatbot({ className = "" }: GeminiChatbotProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { address } = useAccount()
+
+  const sendMessageToServer = async (messageContent: string) => {
+    setIsTyping(true);
+    try {
+      const response = await fetch(`${API_URL}/chatbot/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: messageContent,
+          userAddress: address,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get a response from the AI.");
+      }
+
+      const data = await response.json();
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: data.reply,
+        sender: "ai",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Sorry, I'm having trouble connecting to my brain right now. Please try again in a moment.",
+        sender: "ai",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  useEffect(() => {
+    if (startOpen) {
+      setIsOpen(true);
+    }
+  }, [startOpen]);
+
+  useEffect(() => {
+    if (initialMessage) {
+      const userMessage: Message = {
+        id: 'initial-prompt',
+        content: initialMessage,
+        sender: 'user',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, userMessage]);
+      sendMessageToServer(initialMessage);
+    }
+  }, [initialMessage]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -85,44 +150,7 @@ export default function GeminiChatbot({ className = "" }: GeminiChatbotProps) {
 
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
-    setIsTyping(true)
-
-    try {
-      const response = await fetch(`${API_URL}/chatbot/query`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: inputValue,
-          userAddress: address,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to get a response from the AI.")
-      }
-
-      const data = await response.json()
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: data.reply,
-        sender: "ai",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiMessage])
-    } catch (error) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "Sorry, I'm having trouble connecting to my brain right now. Please try again in a moment.",
-        sender: "ai",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
-    } finally {
-      setIsTyping(false)
-    }
+    sendMessageToServer(inputValue)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

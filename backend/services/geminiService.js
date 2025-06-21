@@ -20,6 +20,34 @@ const generateResponse = async (prompt) => {
     }
 };
 
+const generateIntentExplanation = async (intent) => {
+    const prompt = `
+You are a helpful DeFi assistant. A user has provided an intent, and your goal is to explain it to them in a simple, easy-to-understand way. The user is likely a beginner.
+
+Keep the explanation concise (2-3 sentences) and focus on the core action and its outcome. Avoid overly technical jargon.
+
+User Intent: "${intent}"
+
+Explanation:
+    `;
+    return generateResponse(prompt);
+};
+
+const generateDetailedIntentExplanation = async (intent) => {
+    const prompt = `
+You are a helpful DeFi assistant. A user has asked for a more detailed explanation of their intent. Your goal is to provide a comprehensive but still easy-to-understand explanation. The user is likely a beginner but is curious to learn more.
+
+Explain the following user intent in 3-4 sentences. Cover what the action is, what happens to their assets, what the potential risks are (if any), and what the expected outcome is. Use analogies if helpful.
+
+User Intent: "${intent}"
+
+Detailed Explanation:
+    `;
+    return generateResponse(prompt);
+};
+
 module.exports = {
     generateResponse,
+    generateIntentExplanation,
+    generateDetailedIntentExplanation,
 }; 

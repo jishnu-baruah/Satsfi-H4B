@@ -38,6 +38,8 @@ export default function Dashboard() {
   const [systemResponse, setSystemResponse] = useState("Staked into stCORE Vault")
   const [mounted, setMounted] = useState(false)
   const [selectedChart, setSelectedChart] = useState<"BTC" | "ETH" | "CORE">("BTC")
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+  const [chatbotInitialMessage, setChatbotInitialMessage] = useState<string | undefined>()
   const { user } = useUser()
   const { portfolio, isLoading, error, refetch } = usePortfolio()
   const [vaults, setVaults] = useState<any[]>([])
@@ -109,6 +111,16 @@ export default function Dashboard() {
       });
     }
   }, [portfolio, systemResponse, lastIntent])
+
+  const handleExplainMore = (intent: string) => {
+    setChatbotInitialMessage(`Can you explain more about what it means to "${intent}"? What are the risks and what happens to my assets?`);
+    setIsChatbotOpen(true);
+    // Reset state after a short delay to allow the component to re-render and be triggered again
+    setTimeout(() => {
+        setIsChatbotOpen(false)
+        setChatbotInitialMessage(undefined)
+    }, 500);
+  };
 
   const handleNewResponse = (intent: string, response: string) => {
     setLastIntent(intent)
@@ -182,6 +194,7 @@ export default function Dashboard() {
           <IntentInput
             placeholder="Enter your next intent..."
             onNewResponse={handleNewResponse}
+            onExplainMore={handleExplainMore}
           />
         </div>
 
@@ -269,7 +282,6 @@ export default function Dashboard() {
           {/* Right Column: Market Overview & Chatbot */}
           <div className="lg:col-span-1 space-y-8">
             <MarketOverview />
-            <GeminiChatbot />
           </div>
         </div>
 
@@ -324,6 +336,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+       <GeminiChatbot startOpen={isChatbotOpen} initialMessage={chatbotInitialMessage} />
     </div>
   )
 }

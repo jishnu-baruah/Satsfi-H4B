@@ -2,9 +2,11 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Loader2, Send, Sparkles } from "lucide-react"
+import { Loader2, Send, Sparkles, BrainCircuit } from "lucide-react"
 import { toast as sonnerToast } from "sonner"
 import { Button } from "./ui/button"
+import { Switch } from "./ui/switch"
+import { Label } from "./ui/label"
 import { useUser } from "@civic/auth/react"
 import {
   API_URL,
@@ -26,6 +28,7 @@ interface IntentInputProps {
   onNewResponse?: (intent: string, response: string) => void
   defaultValue?: string
   onSubmit?: (intent: string) => void
+  onExplainMore?: (intent: string) => void
 }
 
 export default function IntentInput({
@@ -35,9 +38,11 @@ export default function IntentInput({
   onNewResponse,
   defaultValue,
   onSubmit,
+  onExplainMore,
 }: IntentInputProps) {
   const [intent, setIntent] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [mode, setMode] = useState<"learner" | "pro">("pro")
   const { user, signIn: civicSignIn } = useUser()
   const { address } = useAccount()
   const {
@@ -53,6 +58,7 @@ export default function IntentInput({
   } = useWaitForTransactionReceipt({ hash })
 
   const [transactionId, setTransactionId] = useState<string | null>(null)
+  const [isExplaining, setIsExplaining] = useState(false)
 
   const effectiveSignIn = onSignIn || civicSignIn
 
@@ -107,36 +113,55 @@ export default function IntentInput({
     }
   }, [isConfirming, isConfirmed, writeError, receiptError, intent, onNewResponse])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (onSubmit) {
-      onSubmit(intent)
-      return
+  const handleExplainMore = async () => {
+    if (onExplainMore) {
+        onExplainMore(intent);
+        sonnerToast.dismiss("intent-explanation");
+    } else {
+        console.error("onExplainMore prop not provided to IntentInput");
+        sonnerToast.error("Cannot open chat.", { description: "This feature is not available here." });
     }
+  };
 
-    const loadingCondition = isLoading || isWritePending || isConfirming
-    if (!intent.trim() || loadingCondition) {
-      return
+  const handleExplain = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/explain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ intent }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to get explanation.');
+      }
+      sonnerToast.info("Here's what that means:", {
+        description: (
+          <div className="prose prose-sm prose-invert">
+             <p>{data.explanation}</p>
+             <div className="flex gap-2 mt-4">
+                <Button size="sm" className="w-full" onClick={() => executeTransaction()} disabled={isExplaining}>
+                   Proceed
+                </Button>
+                <Button size="sm" variant="outline" className="w-full" onClick={handleExplainMore} disabled={isExplaining}>
+                   {isExplaining ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Explain More'}
+                </Button>
+             </div>
+          </div>
+        ),
+        duration: 20000,
+        id: "intent-explanation",
+      });
+    } catch (err: any) {
+      sonnerToast.error("Explanation Failed", { description: err.message });
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    if (!user) {
-      setIsLoading(true)
-      setTimeout(() => {
-        sonnerToast.info("Sign in to continue", {
-          description:
-            "That's a great question! Please sign in to get a personalized answer.",
-          action: {
-            label: "Sign In",
-            onClick: () => effectiveSignIn(),
-          },
-        })
-        setIsLoading(false)
-      }, 500)
-      return
-    }
-
+  const executeTransaction = async () => {
     setIsLoading(true)
+    sonnerToast.dismiss("intent-explanation"); // Dismiss the explanation toast
 
     try {
       if (!address) {
@@ -176,7 +201,6 @@ export default function IntentInput({
         setTransactionId(data.transactionId)
         const { to, functionName, args, value } = data.transaction
 
-        // Determine which ABI to use
         const abi =
           functionName === "deposit" || functionName === "withdraw" ? StakingVaultABI : LendingPoolABI
 
@@ -198,6 +222,42 @@ export default function IntentInput({
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (onSubmit) {
+      onSubmit(intent)
+      return
+    }
+
+    const loadingCondition = isLoading || isWritePending || isConfirming
+    if (!intent.trim() || loadingCondition) {
+      return
+    }
+
+    if (!user) {
+      setIsLoading(true)
+      setTimeout(() => {
+        sonnerToast.info("Sign in to continue", {
+          description:
+            "That's a great question! Please sign in to get a personalized answer.",
+          action: {
+            label: "Sign In",
+            onClick: () => effectiveSignIn(),
+          },
+        })
+        setIsLoading(false)
+      }, 500)
+      return
+    }
+    
+    if (mode === 'learner') {
+      handleExplain();
+    } else {
+      executeTransaction();
     }
   }
 
@@ -231,6 +291,21 @@ export default function IntentInput({
                 <Send className="w-5 h-5" />
               )}
             </button>
+          </div>
+          <div className="mode-switch-container">
+             <BrainCircuit className="mode-switch-icon" />
+             <Label
+                htmlFor="mode-switch"
+                className={`mode-label ${mode === 'learner' ? 'learner' : 'pro'}`}
+             >
+                Learner Mode
+             </Label>
+             <Switch
+                id="mode-switch"
+                checked={mode === 'learner'}
+                onCheckedChange={(checked) => setMode(checked ? 'learner' : 'pro')}
+                className="mode-switch"
+             />
           </div>
         </div>
       </div>

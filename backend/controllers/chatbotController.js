@@ -12,9 +12,9 @@ const buildPrompt = (newMessage, history, portfolio, prices, knowledgeBase) => {
 : "The user has no active portfolio.";
 
     const pricesString = prices ? `
-- BTC: $${prices.bitcoin.usd.toFixed(2)}
-- ETH: $${prices.ethereum.usd.toFixed(2)}
-- CORE: $${prices['coredaoorg'].usd.toFixed(2)}`
+- BTC: $${prices.bitcoin?.usd?.toFixed(2) || 'N/A'}
+- ETH: $${prices.ethereum?.usd?.toFixed(2) || 'N/A'}
+- CORE: $${prices['coredaoorg']?.usd?.toFixed(2) || 'N/A'}`
 : "Market prices are unavailable.";
 
     const historyString = history.map(msg => `${msg.role === 'user' ? 'User' : 'SatsFi'}: ${msg.content}`).join('\\n');

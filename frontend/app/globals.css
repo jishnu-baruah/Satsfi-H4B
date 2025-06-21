@@ -296,6 +296,39 @@
     transform: scale(1.05);
     box-shadow: 0 8px 25px rgba(180, 255, 60, 0.3);
   }
+
+  .mode-switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-right: 16px;
+    padding-top: 8px;
+  }
+
+  .mode-label {
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .mode-label.learner {
+    color: #ffffff;
+  }
+
+  .mode-label.pro {
+    color: #6b7280;
+  }
+
+  .mode-switch[data-state='checked'] {
+    background-color: #22c55e;
+  }
+
+  .mode-switch-icon {
+    width: 16px;
+    height: 16px;
+    color: #9ca3af;
+  }
 }
 
 @keyframes gradient-shift {
