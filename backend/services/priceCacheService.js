@@ -3,10 +3,14 @@ const axios = require('axios');
 const COIN_GECKO_IDS = ["bitcoin", "ethereum", "usd-coin", "tether", "coredaoorg"].join(',');
 const API_KEY = process.env.COINGECKO_API_KEY;
 
-// Use the Pro API endpoint if an API key is provided, otherwise fallback to the public API.
-const COIN_GECKO_URL = API_KEY 
-    ? `https://pro-api.coingecko.com/api/v3/simple/price?ids=${COIN_GECKO_IDS}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true&x_cg_pro_api_key=${API_KEY}`
-    : `https://api.coingecko.com/api/v3/simple/price?ids=${COIN_GECKO_IDS}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`;
+// The base URL for the public/demo API is always the same.
+const baseUrl = 'https://api.coingecko.com/api/v3';
+let COIN_GECKO_URL = `${baseUrl}/simple/price?ids=${COIN_GECKO_IDS}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`;
+
+// If a DEMO key is provided, append it to the URL.
+if (API_KEY) {
+    COIN_GECKO_URL += `&x_cg_demo_api_key=${API_KEY}`;
+}
 
 class PriceCacheService {
     constructor() {
@@ -18,7 +22,7 @@ class PriceCacheService {
         try {
             const config = {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 }
             };
             const response = await axios.get(COIN_GECKO_URL, config);
