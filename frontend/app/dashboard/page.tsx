@@ -151,6 +151,35 @@ export default function Dashboard() {
           </div>
         </div>
 
+       {/* Intent Status Section */}
+       <div className="glass-card neon-border p-8 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Sparkles className="w-6 h-6 text-orange-400" />
+            <h2 className="text-2xl font-bold gradient-text">Intent Status</h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="space-y-3">
+              <div>
+                <span className="text-gray-400 text-sm uppercase tracking-wider">Last Intent:</span>
+                <p className="text-lg font-mono text-white mt-1">{lastIntent}</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <span className="text-gray-400 text-sm uppercase tracking-wider">System Response:</span>
+                <p className="text-green-400 font-semibold font-mono mt-1">{systemResponse}</p>
+              </div>
+            </div>
+          </div>
+
+          <IntentInput
+            placeholder="Enter your next intent..."
+            onNewResponse={handleNewResponse}
+          />
+        </div>
+
+
         {/* Live Price Ticker */}
         <PriceTicker />
 
@@ -224,40 +253,14 @@ export default function Dashboard() {
             </div>
             <PriceChart symbol={selectedChart} height={350} />
           </div>
-
+          
           {/* Market Overview */}
           <div>
             <MarketOverview />
           </div>
         </div>
 
-        {/* Intent Status Section */}
-        <div className="glass-card neon-border p-8 mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <Sparkles className="w-6 h-6 text-orange-400" />
-            <h2 className="text-2xl font-bold gradient-text">Intent Status</h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div className="space-y-3">
-              <div>
-                <span className="text-gray-400 text-sm uppercase tracking-wider">Last Intent:</span>
-                <p className="text-lg font-mono text-white mt-1">{lastIntent}</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <span className="text-gray-400 text-sm uppercase tracking-wider">System Response:</span>
-                <p className="text-green-400 font-semibold font-mono mt-1">{systemResponse}</p>
-              </div>
-            </div>
-          </div>
-
-          <IntentInput
-            placeholder="Enter your next intent..."
-            onNewResponse={handleNewResponse}
-          />
-        </div>
+       
 
         {/* Vault APY Cards */}
         <div className="mb-8">
