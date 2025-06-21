@@ -1,5 +1,6 @@
 const { ethers } = require("ethers");
 const User = require('../models/User');
+const priceCacheService = require('../services/priceCacheService');
 
 // --- Hardcoded Addresses & RPC URL ---
 // This is the correct way to get the staked balance, as the StakingVault
@@ -39,10 +40,36 @@ const getPortfolioData = async (address) => {
         
         const healthFactor = "1.0"; // Placeholder
 
+        const prices = priceCacheService.getPrices();
+        const corePrice = prices.coredaoorg?.usd || 0;
+
+        const positions = [];
+
+        if (parseFloat(stakedBalance) > 0) {
+            positions.push({
+                type: "stake",
+                asset: "stCORE",
+                amount: parseFloat(stakedBalance).toFixed(4),
+                value: (parseFloat(stakedBalance) * corePrice).toFixed(2),
+                apy: 6.1, // Placeholder APY
+            });
+        }
+
+        if (parseFloat(borrowedBalance) > 0) {
+            positions.push({
+                type: "borrow",
+                asset: "CORE",
+                amount: parseFloat(borrowedBalance).toFixed(4),
+                value: (parseFloat(borrowedBalance) * corePrice).toFixed(2),
+                ltv: 65, // Placeholder LTV
+            });
+        }
+
         return {
             stakedBalance,
             borrowedBalance,
             healthFactor,
+            positions,
         };
     } catch (error) {
         console.error(`Error fetching portfolio data for ${address}:`, error);

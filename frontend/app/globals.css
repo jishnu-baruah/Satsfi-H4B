@@ -92,7 +92,7 @@
 
 @layer components {
   .glass-card {
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(23, 23, 23, 0.6);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(180, 255, 60, 0.1);
     border-radius: 1rem;
@@ -132,37 +132,37 @@
   }
 
   .btn-primary {
-    position: relative;
-    background: linear-gradient(135deg, #b4ff3c, #4fff7b);
-    color: #000000;
-    font-weight: 700;
-    padding: 1rem 2rem;
-    border-radius: 1rem;
-    border: none;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: scale(1);
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(180, 255, 60, 0.2);
+    @apply relative inline-flex items-center justify-center px-6 py-3 font-semibold text-white rounded-lg transition-all duration-300 overflow-hidden;
+    background-color: #D97706; /* Fallback orange */
+    background-image: linear-gradient(to right, #F97316, #EA580C);
+    border: 1px solid #F97316;
+  }
+
+  .btn-primary.btn-glow {
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
   }
 
   .btn-primary::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: left 0.6s ease;
+    content: '';
+    @apply absolute top-0 left-0 w-full h-full;
+    background-image: linear-gradient(to right, #FB923C, #F97316);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+  }
+
+  .btn-primary > * {
+    @apply relative;
+    z-index: 1;
   }
 
   .btn-primary:hover {
-    transform: scale(1.05) translateY(-2px);
-    box-shadow: 0 8px 25px rgba(180, 255, 60, 0.3), 0 0 30px rgba(180, 255, 60, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(249, 115, 22, 0.6);
   }
 
   .btn-primary:hover::before {
-    left: 100%;
+    opacity: 1;
   }
 
   .btn-secondary {
@@ -275,6 +275,26 @@
   .card-hover-effect:hover {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(180, 255, 60, 0.1);
+  }
+
+  .btn-landing {
+    background: linear-gradient(135deg, #B4FF3C, #4FFF7B);
+    color: #000;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .btn-landing:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(180, 255, 60, 0.3);
   }
 }
 

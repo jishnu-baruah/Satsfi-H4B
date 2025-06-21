@@ -7,6 +7,7 @@ import FeaturesSection from "@/components/ui/features-section"
 import { ArrowRight, Sparkles, Zap } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@civic/auth/react"
+import { Button } from "@/components/ui/button"
 
 export default function HomePage() {
   const [showDemo, setShowDemo] = useState(false)
@@ -14,6 +15,8 @@ export default function HomePage() {
   const { user, signIn } = useUser()
   const router = useRouter()
   const heroRef = useRef<HTMLDivElement>(null)
+  const stickyNavRef = useRef<HTMLDivElement>(null)
+  const [isSticky, setIsSticky] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -83,37 +86,37 @@ export default function HomePage() {
       />
 
       {/* Sticky Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b border-gray-900/50">
-        <div
-          className="absolute inset-0 bg-black/80"
-          style={{
-            background: "linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 100%)",
-          }}
-        />
-        <div className="relative max-w-7xl mx-auto px-6">
+      <header
+        ref={stickyNavRef}
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+          isSticky ? 'bg-black/80 backdrop-blur-lg shadow-lg' : 'bg-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link
-              href="/"
-              className="text-2xl font-bold gradient-text-subtle hover:scale-105 transition-transform duration-300"
-            >
-              SatsFi
-            </Link>
-
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <img src="/logo.svg" alt="Satsfi Logo" className="w-12 h-12 object-contain" />
+              <Link
+                href="/"
+                className="text-2xl font-bold gradient-text-subtle hover:scale-105 transition-transform duration-300"
+              >
+                SatsFi
+              </Link>
+            </div>
+            <div className="flex items-center space-x-4">
               <button
                 onClick={handleDashboardClick}
                 className="hidden sm:block text-gray-400 hover:text-white transition-all duration-300 px-4 py-2 rounded-lg hover:bg-white/5"
               >
                 Dashboard
               </button>
-              <button onClick={handleSignIn} className="btn-primary text-sm font-bold flex items-center">
-                <Zap className="w-4 h-4 mr-2" />
+              <button onClick={handleSignIn} className="btn-landing">
                 Get Started
               </button>
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
       {/* Hero Section */}
       <div ref={heroRef} className="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 text-center">
@@ -291,18 +294,16 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <button
               onClick={handleTryDemo}
-              className="btn-primary text-lg font-bold flex items-center justify-center gap-3"
+              className="btn-landing"
             >
-              <Sparkles className="w-5 h-5" />
-              Try Demo Now
+              Launch App & Start Earning
             </button>
-            <Link
-              href="/dashboard"
-              className="btn-secondary text-lg font-semibold flex items-center justify-center gap-3"
+            <button
+              onClick={handleDashboardClick}
+              className="px-8 py-4 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-700 transition-colors"
             >
-              Go to Dashboard
-              <ArrowRight className="w-5 h-5" />
-            </Link>
+              Go to App
+            </button>
           </div>
         </div>
       </div>

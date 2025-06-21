@@ -70,12 +70,15 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link
-              href="/"
-              className="text-2xl font-bold gradient-text hover:scale-105 transition-transform duration-200"
-            >
-              Satsfi
-            </Link>
+            <div className="flex items-center gap-3">
+              <img src="/logo.svg" alt="Satsfi Logo" className="w-12 h-12 object-contain" />
+              <Link
+                href="/"
+                className="text-2xl font-bold gradient-text hover:scale-105 transition-transform duration-200"
+              >
+                Satsfi
+              </Link>
+            </div>
           </div>
 
           {/* Desktop Navigation */}

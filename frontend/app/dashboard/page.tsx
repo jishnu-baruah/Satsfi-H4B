@@ -4,90 +4,31 @@ import { useState, useEffect } from "react"
 import Navbar from "@/components/Navbar"
 import IntentInput from "@/components/IntentInput"
 import PositionCard from "@/components/PositionCard"
+import VaultCard from "@/components/VaultCard"
 import AlertCard from "@/components/AlertCard"
 import PriceTicker from "@/components/PriceTicker"
 import PriceChart from "@/components/PriceChart"
 import MarketOverview from "@/components/MarketOverview"
-import { Sparkles, TrendingUp, DollarSign, Activity, BarChart3, RefreshCw } from "lucide-react"
+import { Sparkles, TrendingUp, DollarSign, Activity, BarChart3, RefreshCw, Bot } from "lucide-react"
 import { useUser } from "@civic/auth/react"
 import { usePortfolio } from "@/hooks/usePortfolio"
 import { Skeleton } from "@/components/ui/skeleton"
 import GeminiChatbot from "@/components/GeminiChatbot"
+import { API_URL } from "@/lib/config"
 
-// Enhanced mock data
-const vaults = [
-  {
-    name: "stCORE",
-    apy: 6.1,
-    tvl: "$2.4M",
-    description: "Core staking vault with liquid staking rewards",
-    risk: "low" as const,
-  },
-  {
-    name: "B14G",
-    apy: 8.3,
-    tvl: "$1.8M",
-    description: "Bitcoin yield farming with automated strategies",
-    risk: "medium" as const,
-  },
-  {
-    name: "Pell",
-    apy: 5.7,
-    tvl: "$3.2M",
-    description: "Restaking protocol with enhanced security",
-    risk: "low" as const,
-  },
-  {
-    name: "Babylon",
-    apy: 7.2,
-    tvl: "$1.1M",
-    description: "Bitcoin staking with native yield",
-    risk: "medium" as const,
-  },
-]
+interface Alert {
+  type: "warning" | "info" | "danger" | "success"
+  message: string
+  timestamp: string
+  priority: "low" | "medium" | "high"
+}
 
-const positions = [
-  {
-    type: "stake" as const,
-    asset: "BTC",
-    amount: "0.5",
-    value: "32,500",
-    apy: 6.1,
-    dailyYield: "$5.32",
-    collateralRatio: 150,
-  },
-  {
-    type: "borrow" as const,
-    asset: "USDC",
-    amount: "15,000",
-    value: "15,000",
-    ltv: 65,
-  },
-]
-
-const alerts = [
-  {
-    type: "warning" as const,
-    message: "APY has dropped from 6.1% → 4.2% in Pell vault",
-    timestamp: "2 hours ago",
-    priority: "medium" as const,
-  },
+// Static alerts for general info
+const staticAlerts: Alert[] = [
   {
     type: "info" as const,
     message: "New vault available: Babylon BTC staking at 7.2% APY",
     timestamp: "1 day ago",
-    priority: "low" as const,
-  },
-  {
-    type: "danger" as const,
-    message: "Repay 10% to stay in safe LTV range (currently 65%)",
-    timestamp: "3 hours ago",
-    priority: "high" as const,
-  },
-  {
-    type: "success" as const,
-    message: "Successfully earned $5.32 in daily yield from stCORE",
-    timestamp: "6 hours ago",
     priority: "low" as const,
   },
 ]
@@ -97,17 +38,80 @@ export default function Dashboard() {
   const [systemResponse, setSystemResponse] = useState("Staked into stCORE Vault")
   const [mounted, setMounted] = useState(false)
   const [selectedChart, setSelectedChart] = useState<"BTC" | "ETH" | "CORE">("BTC")
-  const { user } = useUser();
-  const { portfolio, isLoading, error, refetch } = usePortfolio();
+  const { user } = useUser()
+  const { portfolio, isLoading, error, refetch } = usePortfolio()
+  const [vaults, setVaults] = useState<any[]>([])
+  const [vaultsLoading, setVaultsLoading] = useState(true)
+  const [alerts, setAlerts] = useState<Alert[]>(staticAlerts)
 
   useEffect(() => {
     setMounted(true)
+    const fetchVaults = async () => {
+      setVaultsLoading(true)
+      try {
+        const response = await fetch(`${API_URL}/vaults`)
+        const result = await response.json()
+        if (result.success) {
+          setVaults(result.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch vaults:", error)
+      } finally {
+        setVaultsLoading(false)
+      }
+    }
+    fetchVaults()
   }, [])
 
+  useEffect(() => {
+    if (portfolio) {
+      const dynamicAlerts: Alert[] = []
+      const healthFactor = parseFloat(portfolio.healthFactor)
+
+      if (healthFactor < 1.2 && healthFactor > 0) {
+        dynamicAlerts.push({
+          type: "danger",
+          message: `Your health factor is ${healthFactor.toFixed(2)}. Repay your loan or add collateral to avoid liquidation.`,
+          timestamp: "Just now",
+          priority: "high",
+        })
+      } else if (healthFactor < 1.5 && healthFactor > 0) {
+        dynamicAlerts.push({
+          type: "warning",
+          message: `Your health factor is getting low (${healthFactor.toFixed(2)}). Consider adding collateral.`,
+          timestamp: "Just now",
+          priority: "medium",
+        })
+      }
+
+      if (systemResponse.toLowerCase().includes("staked")) {
+        dynamicAlerts.push({
+            type: "success",
+            message: `Successfully executed intent: ${lastIntent}`,
+            timestamp: "Just now",
+            priority: "low"
+        })
+      }
+
+      // Combine static and dynamic alerts, removing duplicates
+      setAlerts(prevAlerts => {
+          const allAlerts = [...dynamicAlerts, ...staticAlerts];
+          const uniqueMessages = new Set();
+          return allAlerts.filter(alert => {
+              if (uniqueMessages.has(alert.message)) {
+                  return false;
+              }
+              uniqueMessages.add(alert.message);
+              return true;
+          });
+      });
+    }
+  }, [portfolio, systemResponse, lastIntent])
+
   const handleNewResponse = (intent: string, response: string) => {
-    setLastIntent(intent);
-    setSystemResponse(response);
-  };
+    setLastIntent(intent)
+    setSystemResponse(response)
+  }
 
   if (!mounted) return null
 
@@ -211,173 +215,113 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Charts and Market Overview */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-8">
-          {/* Price Chart */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
-              <BarChart3 className="w-6 h-6 text-orange-400" />
-              <h2 className="text-2xl font-bold gradient-text">Price Charts</h2>
-              <div className="flex bg-gray-800/50 rounded-lg p-1 ml-auto">
-                <button
-                  onClick={() => setSelectedChart("BTC")}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-all duration-200 ${
-                    selectedChart === "BTC"
-                      ? "bg-orange-500 text-white"
-                      : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-                  }`}
-                >
-                  BTC
-                </button>
-                <button
-                  onClick={() => setSelectedChart("ETH")}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-all duration-200 ${
-                    selectedChart === "ETH"
-                      ? "bg-orange-500 text-white"
-                      : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-                  }`}
-                >
-                  ETH
-                </button>
-                <button
-                  onClick={() => setSelectedChart("CORE")}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-all duration-200 ${
-                    selectedChart === "CORE"
-                      ? "bg-orange-500 text-white"
-                      : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-                  }`}
-                >
-                  CORE
-                </button>
-              </div>
-            </div>
-            <PriceChart symbol={selectedChart} height={350} />
-          </div>
-          
-          {/* Market Overview */}
-          <div>
-            <MarketOverview />
-          </div>
-        </div>
-
-       
-
-        {/* Vault APY Cards */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold gradient-text mb-6 flex items-center gap-3">
-            <TrendingUp className="w-6 h-6" />
-            My Vaults
-          </h2>
-          <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
-            {vaults.map((vault, index) => (
-              <div
-                key={vault.name}
-                className="glass-card p-6 min-w-[320px] hover:bg-gray-800/30 transition-all duration-500 group border border-gray-800/30 hover:border-orange-500/20"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-2xl font-bold text-white group-hover:text-orange-300 transition-colors duration-300">
-                        {vault.name}
-                      </h3>
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          vault.risk === "low"
-                            ? "bg-green-400/60"
-                            : vault.risk === "medium"
-                              ? "bg-yellow-400/60"
-                              : "bg-red-400/60"
-                        } group-hover:scale-110 transition-transform duration-300`}
-                      />
-                    </div>
-                    {vault.description && (
-                      <p className="text-gray-400 text-sm group-hover:text-gray-300 transition-colors duration-300">
-                        {vault.description}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 mb-1">
-                      <TrendingUp className="w-5 h-5 text-green-400 group-hover:scale-105 transition-transform duration-300" />
-                      <div className="text-3xl font-bold text-green-400 font-mono group-hover:text-green-300 transition-colors duration-300">
-                        {vault.apy}%
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-400 uppercase tracking-wider">APY</div>
-                  </div>
-                </div>
-
-                {vault.tvl && (
-                  <div className="mb-6 p-3 bg-gray-800/20 group-hover:bg-gray-800/40 rounded-lg border border-gray-700/30 group-hover:border-gray-700/50 transition-all duration-300">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                        Total Value Locked
-                      </span>
-                      <span className="font-semibold text-white font-mono">{vault.tvl}</span>
-                    </div>
+        {/* Main Dashboard Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: Positions, Vaults */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Active Positions */}
+            <div>
+              <h2 className="text-2xl font-bold gradient-text mb-4">Active Positions</h2>
+              <div className="space-y-4">
+                {isLoading ? (
+                  <>
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                  </>
+                ) : portfolio?.positions && portfolio.positions.length > 0 ? (
+                  portfolio.positions.map((pos: any, index: number) => (
+                    <PositionCard key={index} {...pos} />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <p>No active positions found.</p>
+                    <p className="text-sm">Make your first move using the intent bar above!</p>
                   </div>
                 )}
-
-                <button
-                  onClick={() => console.log(`Staking in ${vault.name}`)}
-                  className="w-full bg-gradient-to-r from-orange-500/80 to-orange-600/80 hover:from-orange-500 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-orange-500/20 group-hover:shadow-xl"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
-                      <div className="w-2 h-2 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-                    Stake Now
-                  </div>
-                </button>
               </div>
-            ))}
+            </div>
+
+            {/* Available Vaults */}
+            <div>
+              <h2 className="text-2xl font-bold gradient-text mb-4">Available Vaults</h2>
+              <div className="grid md:grid-cols-2 gap-6">
+                {vaultsLoading ? (
+                  // Skeleton loaders for vaults
+                  <>
+                    <Skeleton className="h-48 w-full rounded-lg" />
+                    <Skeleton className="h-48 w-full rounded-lg" />
+                  </>
+                ) : vaults.length > 0 ? (
+                  vaults.map((vault) => (
+                    <VaultCard key={vault.name} {...vault} />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-8 md:col-span-2">
+                    <p>No vaults are currently available.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Market Overview & Chatbot */}
+          <div className="lg:col-span-1 space-y-8">
+            <MarketOverview />
+            <GeminiChatbot />
           </div>
         </div>
 
-        {/* Active Positions */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold gradient-text mb-6 flex items-center gap-3">
-            <Activity className="w-6 h-6" />
-            Active Positions
-          </h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {positions.map((position, index) => (
-              <PositionCard
-                key={index}
-                type={position.type}
-                asset={position.asset}
-                amount={position.amount}
-                value={position.value}
-                apy={position.apy}
-                ltv={position.ltv}
-                dailyYield={position.dailyYield}
-                collateralRatio={position.collateralRatio}
-              />
-            ))}
+        {/* Charts and Alerts */}
+        <div className="grid lg:grid-cols-3 gap-8 my-8">
+          {/* Price Chart */}
+          <div className="lg:col-span-2">
+            <div className="glass-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="w-6 h-6 text-orange-400" />
+                  <h2 className="text-2xl font-bold gradient-text">Price Charts</h2>
+                </div>
+                <div className="flex bg-gray-800/50 rounded-lg p-1">
+                  {(["BTC", "ETH", "CORE"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSelectedChart(s)}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-all duration-200 ${
+                        selectedChart === s
+                          ? "bg-orange-500 text-white"
+                          : "text-gray-400 hover:text-white hover:bg-gray-700/50"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <PriceChart symbol={selectedChart} height={350} />
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* AI Alerts Feed */}
-        <div>
-          <h2 className="text-2xl font-bold gradient-text mb-6 flex items-center gap-3">
-            <Sparkles className="w-6 h-6" />
-            AI Recommendations
-          </h2>
-          <div className="space-y-4">
-            {alerts.map((alert, index) => (
-              <AlertCard
-                key={index}
-                type={alert.type}
-                message={alert.message}
-                timestamp={alert.timestamp}
-                priority={alert.priority}
-              />
-            ))}
+          {/* Right Column: Alerts */}
+          <div className="lg:col-span-1">
+             <div>
+                <h2 className="text-2xl font-bold gradient-text mb-4">Alerts & Notifications</h2>
+                <div className="space-y-4">
+                   {alerts.length > 0 ? (
+                      alerts.map((alert, index) => (
+                         <AlertCard key={index} {...alert} />
+                      ))
+                   ) : (
+                      <div className="text-center text-gray-500 py-8">
+                         <p>No new notifications.</p>
+                      </div>
+                   )}
+                </div>
+             </div>
           </div>
         </div>
       </div>
-      <GeminiChatbot />
     </div>
   )
 }

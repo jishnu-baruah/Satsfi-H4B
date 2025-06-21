@@ -6,6 +6,7 @@ interface PortfolioData {
   stakedBalance: string;
   borrowedBalance: string;
   healthFactor: string;
+  positions: any[];
 }
 
 export const usePortfolio = () => {

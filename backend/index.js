@@ -7,6 +7,7 @@ const priceRoutes = require('./routes/priceRoutes');
 const userRoutes = require('./routes/userRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const chatbotRoutes = require('./routes/chatbotRoutes');
+const vaultRoutes = require('./routes/vaultsRoutes');
 const priceCacheService = require('./services/priceCacheService');
 
 const app = express();
@@ -28,6 +29,7 @@ app.use('/api/prices', priceRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/vaults', vaultRoutes);
 
 // Start services
 priceCacheService.start();

@@ -36,7 +36,7 @@ export default function VaultCard({ name, apy, tvl, description, risk = "medium"
   }
 
   return (
-    <div className="glass-card neon-border min-w-[320px] p-6 hover:scale-105 transition-all duration-500 floating-animation group">
+    <div className="glass-card neon-border min-w-[320px] p-6 transition-all duration-500 group">
       <div className="flex justify-between items-start mb-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
