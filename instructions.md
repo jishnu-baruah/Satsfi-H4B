@@ -2,93 +2,110 @@
 
 ## 🚀 Project Overview
 
-**Satsfi** is an intent-centric Bitcoin-powered DeFi neobank that helps users stake BTC, earn optimized yield, and borrow stablecoins seamlessly — all with a Revolut-like dashboard interface. It uses:
+**Satsfi** is an intent-centric Bitcoin-powered DeFi neobank that helps users stake BTC, earn optimized yield, and borrow stablecoins seamlessly. It uses AI to parse user requests and interacts with DeFi protocols on the Core blockchain.
 
-* **Next.js** for frontend (dashboard + user input)
-* **Express.js** for backend (intent resolution, smart contract interaction)
-* **Core blockchain** for DeFi operations (BTC staking, borrowing)
-* **Civic**, **MongoDB**, and **Chainlink** for identity, data, and pricing
+*   **Frontend:** Next.js, `wagmi` for wallet connection, and `@civic/auth` for social login.
+*   **Backend:** Express.js, Mongoose (MongoDB), and Google's Gemini API for intent parsing.
+*   **Smart Contracts:** Solidity contracts for lending and staking (currently mocked in the backend).
 
 ---
 
-## ✅ Prerequisites & Dependencies
+## ✅ Prerequisites
 
 Make sure you have the following installed:
-
-* **Node.js** (v18+ recommended)
-* **Yarn** or **npm**
-* **Docker** (optional, for MongoDB and future containerization)
-* Git
+*   **Node.js** (v18+ recommended)
+*   **Yarn** or **pnpm** or **npm**
+*   **Git**
 
 ---
 
-## 📦 Installation Steps
-
-### 1. Clone the Repository
+## 📦 Installation
 
 ```bash
-git clone https://github.com/your-org/satsfi.git
+# 1. Clone the repository
+git clone <your-repo-url>
 cd satsfi
-```
 
-### 2. Install Frontend Dependencies
-
-```bash
-cd frontend
-npm install
-# or
-yarn install
-```
-
-### 3. Install Backend Dependencies
-
-```bash
-cd ../backend
-npm install
-# or
-yarn install
-```
-
----
-
-## 🛠️ Running the Project
-
-### ➤ Development Mode
-
-#### 1. Start Backend
-
-```bash
+# 2. Install backend dependencies
 cd backend
-npm run dev
-# Runs on http://localhost:5000 by default
-```
+npm install
 
-#### 2. Start Frontend
-
-```bash
+# 3. Install frontend dependencies
 cd ../frontend
-npm run dev
-# Runs on http://localhost:3000 by default
+npm install
 ```
 
 ---
 
-### 🏗️ Production Build
+## 🛠️ Environment Setup
 
-#### Backend
+Create a `.env` file in the `backend/` directory and a `.env.local` file in the `frontend/` directory.
 
-```bash
-cd backend
-npm run build
-npm start
+### Backend (`backend/.env`)
+The backend requires a MongoDB connection string and a Gemini API key for intent parsing.
+
+```env
+# The port the backend server will run on
+PORT=5001
+
+# Your MongoDB connection string
+MONGODB_URI=mongodb+srv://<user>:<password>@<your-cluster-url>/satsfi?retryWrites=true&w=majority
+
+# Your API key from Google AI Studio for the Gemini API
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
-#### Frontend
+### Frontend (`frontend/.env.local`)
+The frontend requires the URL of the backend API and the Civic Client ID for authentication.
+
+```env
+# The full URL of your running backend server
+NEXT_PUBLIC_API_URL=http://localhost:5001
+
+# The Client ID for your Civic application.
+# Get this from the Civic developer dashboard.
+NEXT_PUBLIC_CIVIC_CLIENT_ID=your-civic-client-id
+```
+
+---
+
+## 🏃 Running the Project Locally
+
+You must have both the backend and frontend servers running.
 
 ```bash
+# Terminal 1: Start the backend server
+cd backend
+npm run dev
+# Server will run on http://localhost:5001
+
+# Terminal 2: Start the frontend server
 cd frontend
-npm run build
-npm start
+npm run dev
+# App will run on http://localhost:3000
+```
+
+---
+
+## 🗂 High-Level Architecture
+
+```
+satsfi/
+├── backend/              # Express.js API
+│   ├── controllers/      # Handles business logic (staking, borrowing, users)
+│   ├── models/           # Mongoose schemas (Transaction, User)
+│   ├── routes/           # Defines API endpoints
+│   └── services/         # Connects to external services (Gemini API)
+│
+├── frontend/             # Next.js App
+│   ├── app/              # App Router directory structure
+│   ├── components/       # Reusable UI components (Navbar, IntentInput, etc.)
+│   ├── hooks/            # Custom React hooks
+│   └── services/         # Connects to external services (CoinGecko via backend proxy)
+│
+└── contracts/            # Solidity Smart Contracts
+    ├── contracts/        # Source code for the .sol files
+    └── hardhat.config.ts # Hardhat configuration
 ```
 
 ---
@@ -99,7 +116,7 @@ npm start
 
 User types:
 
-> “Maximize yield on 0.5 BTC”
+> "Maximize yield on 0.5 BTC"
 
 **Satsfi Flow:**
 
@@ -115,7 +132,7 @@ User types:
 
 User types:
 
-> “Borrow 2000 USDC without selling BTC”
+> "Borrow 2000 USDC without selling BTC"
 
 **Satsfi Flow:**
 
@@ -123,51 +140,6 @@ User types:
 * Finds best lending pool
 * Delivers USDC to wallet
 * Frontend displays loan health metrics
-
----
-
-## ⚙️ Environment Setup (.env)
-
-Create a `.env` file in both `frontend/` and `backend/` folders.
-
-### Example `.env` for `backend/`
-
-```
-PORT=5000
-MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/satsfi
-CIVIC_API_KEY=your-civic-api-key
-CHAINLINK_NODE_URL=https://your-node.chainlink.com
-GEMINI_API_KEY=your-gemini-api-key
-CORE_RPC_URL=https://core.rpc.network
-```
-
-### Example `.env.local` for `frontend/`
-
-```
-NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_CIVIC_ENV=dev
-NEXT_PUBLIC_CHAIN_ENV=testnet
-```
-
----
-
-## 🗂 File Structure Overview
-
-```bash
-satsfi/
-├── frontend/             # Next.js frontend app
-│   ├── components/       # UI components (widgets, cards, etc.)
-│   ├── pages/            # Routes/pages (e.g. index.tsx, dashboard.tsx)
-│   ├── utils/            # API functions, helpers
-│   └── public/           # Static assets
-├── backend/              # Express backend server
-│   ├── routes/           # API route handlers
-│   ├── controllers/      # Logic for staking, borrowing, etc.
-│   ├── services/         # Civic, Gemini, Chainlink integrations
-│   ├── models/           # MongoDB schemas
-│   └── utils/            # Intent parser, validators, etc.
-└── README.md
-```
 
 ---
 

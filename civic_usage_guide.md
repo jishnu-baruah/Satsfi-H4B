@@ -1,70 +1,55 @@
 #  civic_usage_guide.md
 
-# Civic Integration Guide for Satsfi (Web2 Flow)
+# Civic Integration Guide for Satsfi
 
-This guide outlines the correct method for integrating Civic's Next.js authentication into the Satsfi application. This setup uses a simple, Web2-style social login and does not include any Web3 or wallet-specific logic.
+This guide outlines the method for integrating Civic's Next.js authentication into the Satsfi application, combining it with `wagmi` for wallet management. This setup uses a simple, Web2-style social login for identity and `wagmi` for all blockchain interactions.
 
 ---
 
 ## 1. Dependencies
 
-Install the necessary Civic packages in the `frontend` directory. Note that we only need the base packages for this flow.
+Install the necessary packages in the `frontend` directory.
 
 ```bash
-npm install @civic/auth @civic/auth/nextjs @civic/auth/react
+# Civic for authentication
+npm install @civic/auth/nextjs @civic/auth/react
+
+# Wagmi for wallet interaction
+npm install wagmi @tanstack/react-query
 ```
 
 ---
 
 ## 2. Environment Variables
 
-Add your Civic Client ID to the `frontend/.env.local` file. The `NEXT_PUBLIC_` prefix is essential for it to be accessible on the client.
+Add your Civic Client ID to the `frontend/.env.local` file. This variable is exposed to the client.
 
-```
+```env
+# Get this from the Civic developer dashboard
 NEXT_PUBLIC_CIVIC_CLIENT_ID=your_civic_client_id_here
 ```
 
 ---
 
-## 3. Backend & Configuration
+## 3. Backend & Configuration (Civic)
 
-These files configure the Next.js backend to handle Civic authentication.
+These files configure the Next.js server to handle Civic authentication callbacks.
 
-### 3.1. `next.config.ts`
+### 3.1. API Route Handler
 
-Update `next.config.ts` to use the `createCivicAuthPlugin`. This plugin handles most of the backend setup.
-
-```typescript
-// frontend/next.config.ts
-import { createCivicAuthPlugin } from "@civic/auth/nextjs"
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  // your existing config...
-};
-
-const withCivicAuth = createCivicAuthPlugin({
-  // Use the NEXT_PUBLIC_ prefixed variable here
-  clientId: process.env.NEXT_PUBLIC_CIVIC_CLIENT_ID!,
-});
-
-export default withCivicAuth(nextConfig)
-```
-
-### 3.2. API Route Handler
-
-Create a catch-all API route that uses the Civic `handler` to manage login, logout, and callback requests.
+Create a catch-all API route that uses the Civic `handler` to manage login, logout, and session requests.
 
 ```typescript
 // frontend/app/api/auth/[...civicauth]/route.ts
 import { handler } from "@civic/auth/nextjs"
 
 export const GET = handler()
+export const POST = handler() // Also handle POST requests
 ```
 
-### 3.3. Middleware
+### 3.2. Middleware for Route Protection
 
-Create a middleware file to protect application routes, ensuring only logged-in users can access them. The `matcher` can be configured to exclude public pages.
+Create a middleware file to protect application routes, redirecting unauthenticated users. The `matcher` is configured to protect all dashboard-related pages.
 
 ```typescript
 // frontend/middleware.ts
@@ -73,8 +58,8 @@ import { authMiddleware } from "@civic/auth/nextjs/middleware"
 export default authMiddleware();
 
 export const config = {
+  // Protect all routes under /dashboard, /history, etc.
   matcher: [
-    // Protect all routes except the homepage, static files, and API routes.
     '/((?!api|_next/static|_next/image|favicon.ico|^/$).*)',
   ],
 }
@@ -84,11 +69,11 @@ export const config = {
 
 ## 4. Frontend Provider Setup
 
-To avoid Server-Side Rendering (SSR) errors related to browser-only APIs (`crypto.subtle`), the provider setup must be wrapped in a component that is only rendered on the client.
+To avoid Server-Side Rendering (SSR) errors, all providers (`Civic`, `Wagmi`, `QueryClient`) must be wrapped in a component that is only rendered on the client.
 
 ### 4.1. `AppProviders` Component
 
-Create a component to house the `CivicAuthProvider`. **Do not** pass a `clientId` prop here; it is handled automatically by the Next.js plugin.
+This component configures and houses all necessary providers.
 
 ```typescript
 // frontend/components/AppProviders.tsx
@@ -96,30 +81,42 @@ Create a component to house the `CivicAuthProvider`. **Do not** pass a `clientId
 
 import { CivicAuthProvider } from '@civic/auth/nextjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { WagmiProvider, createConfig, http } from 'wagmi';
+import { coreDao } from 'wagmi/chains';
+
+// Wagmi configuration
+const wagmiConfig = createConfig({
+  chains: [coreDao],
+  transports: {
+    [coreDao.id]: http(),
+  },
+});
 
 const queryClient = new QueryClient();
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <CivicAuthProvider>
-        {children}
-      </CivicAuthProvider>
-    </QueryClientProvider>
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <CivicAuthProvider>
+          {children}
+        </CivicAuthProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
 ```
 
 ### 4.2. `ClientRoot` Component
 
-Create a dedicated client component that dynamically imports `AppProviders` with SSR turned off. This is the key to fixing the `crypto.subtle is undefined` error.
+This dedicated client component dynamically imports `AppProviders` with SSR turned off. This is the key to fixing potential hydration errors. It also includes the `Toaster` for sitewide notifications.
 
 ```typescript
 // frontend/components/ClientRoot.tsx
 "use client";
 
 import dynamic from "next/dynamic";
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "@/components/ui/toaster"
 
 const AppProviders = dynamic(() => import('@/components/AppProviders').then(mod => mod.AppProviders), {
   ssr: false,
@@ -137,30 +134,18 @@ export function ClientRoot({ children }: { children: React.ReactNode }) {
 
 ### 4.3. Root Layout
 
-Finally, update the root layout to use the `ClientRoot` component.
+Finally, the root layout uses `ClientRoot` to wrap the main application content.
 
 ```typescript
 // frontend/app/layout.tsx
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
 import { ClientRoot } from "@/components/ClientRoot"
-
-const inter = Inter({ subsets: ["latin"] })
-
-// ... (metadata)
+// ... other imports
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
+      <body>
+        <ThemeProvider>
           <ClientRoot>
             {children}
           </ClientRoot>
@@ -175,21 +160,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ## 5. UI Integration
 
-To add a sign-in button and display user information, use the `UserButton` component from `@civic/auth/react`.
+Use the `UserButton` from Civic for login/logout and the `ConnectWalletButton` (custom component using `wagmi` hooks) for wallet actions.
 
 ```typescript
 // Example in frontend/components/Navbar.tsx
 import { UserButton } from "@civic/auth/react";
+import { ConnectWalletButton } from "./ConnectWalletButton";
 
 export function Navbar() {
   return (
     <nav>
       {/* ... other navbar elements */}
       <div className="flex items-center gap-4">
+        <ConnectWalletButton />
         <UserButton />
       </div>
     </nav>
   );
 }
 ```
-This completes the correct setup for Civic Web2 authentication. 
+This completes the setup for Civic social login combined with `wagmi` wallet management. 
