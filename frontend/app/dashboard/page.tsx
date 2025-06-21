@@ -68,14 +68,16 @@ export default function Dashboard() {
       const dynamicAlerts: Alert[] = []
       const healthFactor = parseFloat(portfolio.healthFactor)
 
-      if (healthFactor < 1.2 && healthFactor > 0) {
+      // In standard DeFi, a health factor below 1.0 is subject to liquidation.
+      // These thresholds are adjusted to treat 1.0 as a safe value.
+      if (healthFactor < 0.8 && healthFactor > 0) {
         dynamicAlerts.push({
           type: "danger",
           message: `Your health factor is ${healthFactor.toFixed(2)}. Repay your loan or add collateral to avoid liquidation.`,
           timestamp: "Just now",
           priority: "high",
         })
-      } else if (healthFactor < 1.5 && healthFactor > 0) {
+      } else if (healthFactor < 1.0 && healthFactor > 0) {
         dynamicAlerts.push({
           type: "warning",
           message: `Your health factor is getting low (${healthFactor.toFixed(2)}). Consider adding collateral.`,
