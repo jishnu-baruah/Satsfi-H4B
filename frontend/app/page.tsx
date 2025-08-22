@@ -95,7 +95,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <img src="/logo.svg" alt="Satsfi Logo" className="w-12 h-12 object-contain" />
+              <img src="https://ik.imagekit.io/3rdfd9oed/Black_and_Green_Modern_Corporate_Finance_Logo__2_-removebg-preview%20(1).png?updatedAt=1755410942148" alt="Satsfi Logo" className="w-12 h-12 object-contain" />
               <Link
                 href="/"
                 className="text-2xl font-bold gradient-text-subtle hover:scale-105 transition-transform duration-300"

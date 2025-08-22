@@ -71,7 +71,7 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex items-center gap-3">
-              <img src="/logo.svg" alt="Satsfi Logo" className="w-12 h-12 object-contain" />
+              <img src="https://ik.imagekit.io/3rdfd9oed/Black_and_Green_Modern_Corporate_Finance_Logo__2_-removebg-preview%20(1).png?updatedAt=1755410942148" alt="Satsfi Logo" className="w-12 h-12 object-contain" />
               <Link
                 href="/"
                 className="text-2xl font-bold gradient-text hover:scale-105 transition-transform duration-200"
